@@ -461,6 +461,18 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
         ))}
       </div>
 
+      <footer style={{ marginTop: 40, fontSize: 12, color: 'var(--fg-subtle)', textAlign: 'center' }}>
+        Made with love and Claude by{' '}
+        <a
+          href="https://www.linkedin.com/in/rishu-raj-gupta/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--fg-muted)', textDecoration: 'underline', textUnderlineOffset: 3 }}
+        >
+          Rishu Raj Gupta
+        </a>
+      </footer>
+
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
