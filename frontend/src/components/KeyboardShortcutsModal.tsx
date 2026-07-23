@@ -82,7 +82,7 @@ export function KeyboardShortcutsModal({ onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.7)',
+        background: 'var(--backdrop-strong)',
         zIndex: 100,
         display: 'flex',
         alignItems: 'center',
@@ -94,13 +94,13 @@ export function KeyboardShortcutsModal({ onClose }: Props) {
       <div
         style={{
           background: 'var(--bg-surface)',
-          border: '1px solid #30363d',
+          border: '1px solid var(--border)',
           borderRadius: 12,
           padding: '24px 28px',
           width: 480,
           maxHeight: '80vh',
           overflowY: 'auto',
-          boxShadow: '0 16px 64px rgba(0,0,0,0.7)',
+          boxShadow: 'var(--shadow-modal)',
         }}
         onClick={e => e.stopPropagation()}
       >

@@ -72,7 +72,7 @@ function NodeTooltip({ node, anchorRef }: TooltipProps) {
         borderRadius: 10,
         padding: '12px 14px',
         width: 260,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+        boxShadow: 'var(--shadow-tooltip)',
         pointerEvents: 'none',
       }}
     >
@@ -154,7 +154,7 @@ export const FileNode = memo(({ data, selected }: NodeProps) => {
   const hotspotGlow = isHotspot
     ? `0 0 0 2px ${color}60, 0 0 20px ${color}40, 0 4px 20px ${color}20`
     : '';
-  const activeGlow = isActive ? `0 0 0 2px ${color}40, 0 4px 20px ${color}20` : '0 2px 8px rgba(0,0,0,0.4)';
+  const activeGlow = isActive ? `0 0 0 2px ${color}40, 0 4px 20px ${color}20` : 'var(--shadow-node)';
   const boxShadow = isHotspot && isActive
     ? hotspotGlow
     : isHotspot

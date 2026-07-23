@@ -121,7 +121,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
           border: `1px solid ${open ? '#388bfd' : 'var(--border)'}`,
           borderRadius: open && results.length > 0 ? '8px 8px 0 0' : 8,
           padding: '8px 12px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+          boxShadow: 'var(--shadow-md)',
           transition: 'border-color 0.15s',
         }}
       >
@@ -186,7 +186,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
             borderTop: 'none',
             borderRadius: '0 0 8px 8px',
             overflow: 'hidden',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            boxShadow: 'var(--shadow-lg)',
           }}
         >
           {results.map((node, i) => {

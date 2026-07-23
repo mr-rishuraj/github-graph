@@ -127,9 +127,9 @@ export function StatsPanel({ meta, nodes = [], onFocusCycle }: StatsPanelProps) 
         zIndex: 10,
         width: 248,
         background: 'var(--bg-surface)',
-        border: '1px solid #30363d',
+        border: '1px solid var(--border)',
         borderRadius: 10,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+        boxShadow: 'var(--shadow-md)',
         overflow: 'hidden',
       }}
     >

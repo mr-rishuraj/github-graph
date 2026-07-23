@@ -28,7 +28,7 @@ export function BottomSheet({ open, onClose, title, children, height = '70vh' }:
         <div
           onClick={onClose}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            position: 'fixed', inset: 0, background: 'var(--backdrop)',
             zIndex: 40, backdropFilter: 'blur(2px)',
           }}
         />

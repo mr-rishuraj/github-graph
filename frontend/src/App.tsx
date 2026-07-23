@@ -546,7 +546,7 @@ export function App() {
                     background: 'var(--bg-surface)',
                     border: '1px solid var(--border)',
                     borderRadius: 8,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    boxShadow: 'var(--shadow-lg)',
                     zIndex: 100,
                     minWidth: 160,
                     overflow: 'hidden',

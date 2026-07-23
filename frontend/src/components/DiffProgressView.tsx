@@ -58,7 +58,7 @@ export function DiffProgressView({ currentEvent, branchA, branchB }: DiffProgres
       <div style={{
         width: '100%', maxWidth: 560, background: 'var(--bg-surface)',
         border: '1px solid var(--border)', borderRadius: 16, padding: '32px 36px',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--shadow-xl)',
       }}>
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 13, color: 'var(--fg-subtle)', marginBottom: 6 }}>Comparing branches</div>

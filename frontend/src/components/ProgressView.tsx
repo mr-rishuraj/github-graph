@@ -102,7 +102,7 @@ export function ProgressView({ currentEvent, repoUrl }: ProgressViewProps) {
           border: `1px solid ${isError ? '#ef444440' : 'var(--border)'}`,
           borderRadius: 16,
           padding: '32px 36px',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+          boxShadow: 'var(--shadow-xl)',
         }}
       >
         {/* Header */}

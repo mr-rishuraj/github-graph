@@ -127,6 +127,18 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
   // Build and layout the flow graph — async worker for large graphs, sync for small
   const [isLayoutComputing, setIsLayoutComputing] = useState(false);
 
+  // Reactive light-theme check for MiniMap maskColor
+  const [isLightTheme, setIsLightTheme] = useState(
+    () => document.documentElement.getAttribute('data-theme') === 'light'
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsLightTheme(document.documentElement.getAttribute('data-theme') === 'light')
+    );
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -490,7 +502,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             background: 'var(--bg-surface)',
             border: '1px solid var(--border)',
             borderRadius: 8,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         />
         <MiniMap
@@ -499,7 +511,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             border: '1px solid var(--border)',
             borderRadius: 8,
           }}
-          maskColor="rgba(0,0,0,0.6)"
+          maskColor={isLightTheme ? 'rgba(238,242,247,0.75)' : 'rgba(0,0,0,0.6)'}
           nodeColor={n => {
             if (n.type === 'group') return '#388bfd20';
             return FILE_TYPE_COLORS[(n.data as unknown as GraphNode).type] ?? '#4b5563';
@@ -525,7 +537,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         >
           <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #388bfd', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
@@ -595,7 +607,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '6px 14px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         >
           {[
@@ -624,7 +636,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '6px 14px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         >
           {([
