@@ -1,0 +1,366 @@
+openapi: 3.1.0
+info:
+  title: GitHub Graph API
+  description: REST API for analyzing GitHub repository dependency graphs
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+paths:
+  /health:
+    get:
+      summary: Basic health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/detailed:
+    get:
+      summary: Detailed health including cache stats and memory
+      operationId: getHealthDetailed
+      responses:
+        '200':
+          description: Detailed server status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDetailed'
+
+  /api/analyze-stream:
+    get:
+      summary: Analyze a repository with real-time SSE progress
+      operationId: analyzeStream
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full GitHub repository URL
+          example: https://github.com/facebook/react
+        - name: maxFiles
+          in: query
+          schema:
+            type: integer
+            default: 2000
+            minimum: 1
+            maximum: 5000
+        - name: excludeTests
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: excludeStyles
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Server-Sent Events stream of analysis progress
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                start:
+                  value: 'data: {"type":"start","sha":"abc123"}'
+                downloading:
+                  value: 'data: {"type":"downloading","repo":"facebook/react","branch":"main"}'
+                parsing:
+                  value: 'data: {"type":"parsing","current":50,"total":200,"file":"src/App.js"}'
+                complete:
+                  value: 'data: {"type":"complete","graph":{...}}'
+                error:
+                  value: 'data: {"type":"error","message":"Repository not found"}'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/analyze:
+    post:
+      summary: Analyze a repository synchronously (blocks until complete)
+      operationId: analyzeRepo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeRequest'
+      responses:
+        '200':
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/cache/stats:
+    get:
+      summary: Cache statistics
+      operationId: getCacheStats
+      responses:
+        '200':
+          description: Cache hit/miss stats and disk usage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheStats'
+
+  /api/cache/repo/{owner}/{repo}:
+    delete:
+      summary: Invalidate all cached results for a specific repository
+      operationId: invalidateRepoCache
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Number of entries removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  removed:
+                    type: integer
+
+  /api/cache/{jobId}:
+    delete:
+      summary: Delete a specific job's temporary extracted files
+      operationId: deleteJobCache
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+components:
+  schemas:
+    AnalyzeRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          example: https://github.com/vitejs/vite
+        maxFiles:
+          type: integer
+          default: 2000
+        excludeTests:
+          type: boolean
+          default: false
+        excludeStyles:
+          type: boolean
+          default: false
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        graph:
+          $ref: '#/components/schemas/GraphData'
+        cached:
+          type: boolean
+        sha:
+          type: string
+        jobId:
+          type: string
+
+    GraphData:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraphEdge'
+        meta:
+          $ref: '#/components/schemas/GraphMeta'
+
+    GraphNode:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [page, component, hook, context, utility, api, style, asset, config, test, layout, unknown]
+        language:
+          type: string
+          enum: [javascript, typescript, jsx, tsx, css, scss, json, python, other]
+        lineCount:
+          type: integer
+        sizeBytes:
+          type: integer
+        instability:
+          type: number
+          minimum: 0
+          maximum: 1
+        afferentCoupling:
+          type: integer
+        efferentCoupling:
+          type: integer
+
+    GraphEdge:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        relation:
+          type: string
+          enum: [imports, dynamic-import, re-exports]
+        specifiers:
+          type: array
+          items:
+            type: string
+
+    GraphMeta:
+      type: object
+      properties:
+        owner:
+          type: string
+        repo:
+          type: string
+        branch:
+          type: string
+        totalFiles:
+          type: integer
+        edgeCount:
+          type: integer
+        analysisMs:
+          type: integer
+        circularDeps:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        diagnostics:
+          $ref: '#/components/schemas/AnalysisDiagnostics'
+
+    AnalysisDiagnostics:
+      type: object
+      properties:
+        totalImports:
+          type: integer
+        externalImports:
+          type: integer
+        resolvedImports:
+          type: integer
+        barrelFollowedEdges:
+          type: integer
+        parseFailures:
+          type: integer
+
+    CacheStats:
+      type: object
+      properties:
+        hits:
+          type: integer
+        misses:
+          type: integer
+        entries:
+          type: integer
+        totalBytes:
+          type: integer
+
+    HealthDetailed:
+      type: object
+      properties:
+        status:
+          type: string
+        uptime:
+          type: number
+        cache:
+          $ref: '#/components/schemas/CacheStats'
+        memory:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              retryAfter:
+                type: integer
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: string

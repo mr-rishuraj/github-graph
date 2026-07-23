@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Theme variables ─────────────────────────────────────────────────────── */
+
+:root {
+  --bg-canvas:   #0d1117;
+  --bg-surface:  #161b22;
+  --bg-overlay:  #21262d;
+  --border:      #30363d;
+  --border-sub:  #21262d;
+  --fg:          #e6edf3;
+  --fg-muted:    #8b949e;
+  --fg-subtle:   #6e7681;
+  --accent:      #388bfd;
+}
+
+[data-theme="light"] {
+  --bg-canvas:   #f6f8fa;
+  --bg-surface:  #ffffff;
+  --bg-overlay:  #f0f2f4;
+  --border:      #d0d7de;
+  --border-sub:  #e8ecf0;
+  --fg:          #1f2328;
+  --fg-muted:    #57606a;
+  --fg-subtle:   #6e7781;
+  --accent:      #0969da;
+  color-scheme: light;
+}
+
+/* Light mode edge grid */
+[data-theme="light"] .react-flow__background pattern circle {
+  fill: #c8d0d8 !important;
+}
+
+/* Light mode minimap */
+[data-theme="light"] .react-flow__minimap-mask {
+  fill: rgba(240, 242, 244, 0.6) !important;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Noto Sans, Helvetica, Arial, sans-serif;
+  background: var(--bg-canvas);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── React Flow overrides ────────────────────────────────────────────────── */
+
+.react-flow__controls {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.react-flow__controls-button {
+  background: var(--bg-surface) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border-sub) !important;
+  color: var(--fg-muted) !important;
+  fill: var(--fg-muted) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-overlay) !important;
+  color: var(--fg) !important;
+  fill: var(--fg) !important;
+}
+
+.react-flow__minimap {
+  background: var(--bg-canvas) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+
+/* ─── Custom scrollbar ────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-subtle); }
+
+.react-flow__edge-text { font-size: 10px !important; fill: var(--fg-subtle) !important; }
+.react-flow__node { transition: opacity 0.15s ease !important; }
+
+/* ─── Mobile layout ───────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Stats panel: hidden by default on mobile, tap to toggle */
+  .stats-panel-mobile-hidden {
+    display: none !important;
+  }
+
+  /* Filter panel: dock to bottom full-width */
+  .filter-panel {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    border-radius: 12px 12px 0 0 !important;
+    max-height: 50vh !important;
+  }
+
+  /* Sidebar: full-width overlay on mobile */
+  .sidebar-mobile {
+    width: 100vw !important;
+    top: auto !important;
+    height: 60vh !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border) !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  /* Toolbar: smaller, single row */
+  .graph-toolbar {
+    gap: 2px !important;
+    bottom: 8px !important;
+    right: 8px !important;
+  }
+
+  .graph-toolbar button {
+    font-size: 10px !important;
+    padding: 3px 7px !important;
+  }
+
+  /* SearchBar: narrower */
+  .search-bar-container {
+    width: calc(100vw - 120px) !important;
+    max-width: 280px !important;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.animate-slide-in { animation: slide-in 0.18s ease; }
