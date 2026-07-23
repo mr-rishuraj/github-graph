@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { GitBranch, ArrowLeftRight } from 'lucide-react';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 interface DiffInputProps {
   url: string;
@@ -12,6 +13,7 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
   const [branchB, setBranchB] = useState('develop');
   const [maxFiles, setMaxFiles] = useState(2000);
   const [excludeTests, setExcludeTests] = useState(true);
+  const isMobile = useIsMobile();
 
   const repoName = (() => {
     try { return new URL(url).pathname.replace(/^\//, '').replace(/\/$/, ''); } catch { return url; }
@@ -56,7 +58,7 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
           background: 'var(--bg-surface)', border: '1px solid var(--border)',
           borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 16,
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Base branch (A)

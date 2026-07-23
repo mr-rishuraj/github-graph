@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { GraphNode, GraphEdge, FileType } from '../types/index.js';
+import type { GraphNode, GraphEdge, FileType, DiffStatus } from '../types/index.js';
 import { FILE_TYPE_COLORS, FILE_TYPE_LABELS, LANGUAGE_LABELS } from '../types/index.js';
 import { X, FileCode, ArrowDown, ArrowUp, GitBranch, Layers, ExternalLink, Package, Copy, Check } from 'lucide-react';
 
@@ -11,6 +11,7 @@ interface SidebarProps {
   onNodeClick: (id: string) => void;
   repoMeta?: { owner: string; repo: string; branch: string };
   isMobile?: boolean;
+  diffStatus?: DiffStatus;
 }
 
 function formatBytes(bytes: number): string {
@@ -87,7 +88,7 @@ function FileRef({ node, onClick }: { node: GraphNode; onClick: () => void }) {
 
 const SHOW_LIMIT = 30;
 
-export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMeta, isMobile }: SidebarProps) {
+export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMeta, isMobile, diffStatus }: SidebarProps) {
   const [showAllImports, setShowAllImports] = useState(false);
   const [showAllImportedBy, setShowAllImportedBy] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
@@ -183,6 +184,9 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
               <Badge color={color}>{FILE_TYPE_LABELS[node.type]}</Badge>
               <Badge color="#6b7280">{LANGUAGE_LABELS[node.language]}</Badge>
               {node.isBarrel && <Badge color="#8b5cf6">Barrel</Badge>}
+              {diffStatus === 'added' && <Badge color="#10b981">+ Added</Badge>}
+              {diffStatus === 'removed' && <Badge color="#ef4444">- Removed</Badge>}
+              {diffStatus === 'changed' && <Badge color="#f59e0b">~ Changed</Badge>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 4 }}>

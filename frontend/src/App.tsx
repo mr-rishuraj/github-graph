@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { UrlInput } from './components/UrlInput.js';
 import { GraphCanvas } from './components/GraphCanvas.js';
@@ -9,7 +9,8 @@ import { analyzeWithProgress, diffWithProgress, type ProgressEvent, type DiffPro
 import type { GraphData, DiffGraphData } from './types/index.js';
 import { useRecentRepos } from './hooks/useRecentRepos.js';
 import { useGitHubAuth } from './hooks/useGitHubAuth.js';
-import { Github, ArrowLeft, Copy, Check, Sun, Moon, LogIn, LogOut, GitBranch } from 'lucide-react';
+import { useIsMobile } from './hooks/useIsMobile.js';
+import { Github, ArrowLeft, Copy, Check, Sun, Moon, LogIn, LogOut, GitBranch, MoreHorizontal } from 'lucide-react';
 
 type AppState =
   | { phase: 'input' }
@@ -50,11 +51,15 @@ export function App() {
   const [appState, setAppState] = useState<AppState>({ phase: 'input' });
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     (localStorage.getItem('github-graph-theme') as 'dark' | 'light') ?? 'dark'
   );
   const { repos: recentRepos, addRepo, exportRepos, importRepos } = useRecentRepos();
   const { token, user, loading: authLoading, login, logout } = useGitHubAuth();
+  const isMobile = useIsMobile();
+  // Saves the last loaded graph so Back from diff view can return to it
+  const lastGraphRef = useRef<{ url: string; graph: GraphData } | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -105,6 +110,7 @@ export function App() {
         })();
         addRepo({ url, label: repoName, nodeCount: graph.nodes.length });
 
+        lastGraphRef.current = { url, graph };
         setAppState({ phase: 'graph', url, graph });
       } catch (err: unknown) {
         const message =
@@ -143,9 +149,21 @@ export function App() {
   );
 
   const handleBack = useCallback(() => {
-    clearHash();
-    setAppState({ phase: 'input' });
+    setAppState(prev => {
+      // From any diff phase, return to the last graph if we have one
+      if (
+        (prev.phase === 'diff' || prev.phase === 'diff-input' || prev.phase === 'diff-progress')
+        && lastGraphRef.current
+      ) {
+        const { url, graph } = lastGraphRef.current;
+        setHashRepo(url);
+        return { phase: 'graph', url, graph };
+      }
+      clearHash();
+      return { phase: 'input' };
+    });
     setError(null);
+    setShowMobileMenu(false);
   }, []);
 
   const handleCopyLink = useCallback(() => {
@@ -200,7 +218,7 @@ export function App() {
       <DiffInput
         url={appState.url}
         onDiff={(branchA, branchB, opts) => handleDiffAnalyze(appState.url, branchA, branchB, opts)}
-        onCancel={() => setAppState({ phase: 'input' })}
+        onCancel={handleBack}
       />
     );
   }
@@ -249,22 +267,18 @@ export function App() {
             className="hover:border-[#388bfd] hover:text-[#388bfd]"
           >
             <ArrowLeft size={13} />
-            Back
+            {isMobile ? '' : 'Graph'}
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Github size={15} color="var(--fg-muted)" />
-            <span style={{ fontSize: 13, color: 'var(--fg)', fontWeight: 600, fontFamily: 'monospace' }}>
-              {graph.meta.owner}/{graph.meta.repo}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, minWidth: 0, overflow: 'hidden' }}>
+            {!isMobile && <Github size={15} color="var(--fg-muted)" style={{ flexShrink: 0 }} />}
+            <span style={{ fontSize: isMobile ? 11 : 13, color: '#10b981', fontFamily: 'monospace', fontWeight: 600, flexShrink: 0 }}>{branchA}</span>
+            <span style={{ color: 'var(--fg-subtle)', flexShrink: 0 }}>→</span>
+            <span style={{ fontSize: isMobile ? 11 : 13, color: '#388bfd', fontFamily: 'monospace', fontWeight: 600, flexShrink: 0 }}>{branchB}</span>
           </div>
 
-          <span style={{ fontSize: 12, color: '#10b981', fontFamily: 'monospace', fontWeight: 600 }}>{branchA}</span>
-          <span style={{ color: 'var(--fg-subtle)' }}>→</span>
-          <span style={{ fontSize: 12, color: '#388bfd', fontFamily: 'monospace', fontWeight: 600 }}>{branchB}</span>
-
-          {/* Diff summary badges */}
-          {[
+          {/* Diff summary badges — hide on mobile to save space */}
+          {!isMobile && [
             { label: `+${graph.diff.meta.added}`, color: '#10b981' },
             { label: `-${graph.diff.meta.removed}`, color: '#ef4444' },
             { label: `~${graph.diff.meta.changed}`, color: '#f59e0b' },
@@ -274,10 +288,20 @@ export function App() {
             </span>
           ))}
 
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
-              {graph.nodes.length.toLocaleString()} nodes
-            </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: isMobile ? 6 : 12, alignItems: 'center' }}>
+            {/* On mobile, show compact diff badges here */}
+            {isMobile && [
+              { label: `+${graph.diff.meta.added}`, color: '#10b981' },
+              { label: `-${graph.diff.meta.removed}`, color: '#ef4444' },
+              { label: `~${graph.diff.meta.changed}`, color: '#f59e0b' },
+            ].map(b => (
+              <span key={b.label} style={{ fontSize: 10, fontWeight: 700, color: b.color }}>{b.label}</span>
+            ))}
+            {!isMobile && (
+              <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
+                {graph.nodes.length.toLocaleString()} nodes
+              </span>
+            )}
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}
@@ -347,47 +371,55 @@ export function App() {
           Back
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Github size={15} color="var(--fg-muted)" />
-          <span style={{ fontSize: 13, color: 'var(--fg)', fontWeight: 600, fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+          <Github size={15} color="var(--fg-muted)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: 'var(--fg)', fontWeight: 600, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {graph.meta.owner}/{graph.meta.repo}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
-            @ {graph.meta.branch}
-          </span>
+          {!isMobile && (
+            <span style={{ fontSize: 12, color: 'var(--fg-subtle)', flexShrink: 0 }}>
+              @ {graph.meta.branch}
+            </span>
+          )}
         </div>
 
-        {/* Compare button */}
-        <button
-          onClick={() => setAppState({ phase: 'diff-input', url })}
-          style={topBarButtonStyle}
-          className="hover:border-[#388bfd] hover:text-[#388bfd]"
-          title="Compare two branches"
-        >
-          <GitBranch size={13} />
-          Compare
-        </button>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
-            {graph.nodes.length.toLocaleString()} nodes
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
-            {graph.edges.length.toLocaleString()} edges
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              color: '#10b981',
-              background: '#10b98118',
-              border: '1px solid #10b98140',
-              borderRadius: 5,
-              padding: '2px 8px',
-              fontWeight: 600,
-            }}
+        {/* Compare button — hidden on mobile (accessible via stats panel) */}
+        {!isMobile && (
+          <button
+            onClick={() => setAppState({ phase: 'diff-input', url })}
+            style={topBarButtonStyle}
+            className="hover:border-[#388bfd] hover:text-[#388bfd]"
+            title="Compare two branches"
           >
-            {(graph.meta.analysisMs / 1000).toFixed(1)}s
-          </span>
+            <GitBranch size={13} />
+            Compare
+          </button>
+        )}
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: isMobile ? 6 : 12, alignItems: 'center' }}>
+          {!isMobile && (
+            <>
+              <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
+                {graph.nodes.length.toLocaleString()} nodes
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--fg-subtle)' }}>
+                {graph.edges.length.toLocaleString()} edges
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#10b981',
+                  background: '#10b98118',
+                  border: '1px solid #10b98140',
+                  borderRadius: 5,
+                  padding: '2px 8px',
+                  fontWeight: 600,
+                }}
+              >
+                {(graph.meta.analysisMs / 1000).toFixed(1)}s
+              </span>
+            </>
+          )}
 
           {/* Theme toggle */}
           <button
@@ -410,77 +442,148 @@ export function App() {
             {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           </button>
 
-          {/* Copy link button */}
-          <button
-            onClick={handleCopyLink}
-            style={{
-              background: 'none',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              padding: '4px 10px',
-              cursor: 'pointer',
-              color: copied ? '#10b981' : 'var(--fg-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: 12,
-              fontWeight: 600,
-              transition: 'all 0.15s',
-              borderColor: copied ? '#10b98140' : 'var(--border)',
-            }}
-            title={`Share link: ${url}`}
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? 'Copied!' : 'Copy link'}
-          </button>
+          {/* Desktop-only: copy link + auth */}
+          {!isMobile && (
+            <>
+              <button
+                onClick={handleCopyLink}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  color: copied ? '#10b981' : 'var(--fg-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: 'all 0.15s',
+                  borderColor: copied ? '#10b98140' : 'var(--border)',
+                }}
+                title={`Share link: ${url}`}
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? 'Copied!' : 'Copy link'}
+              </button>
 
-          {/* Auth button */}
-          {!authLoading && (
-            user ? (
+              {!authLoading && (
+                user ? (
+                  <button
+                    onClick={logout}
+                    title={`Signed in as ${user.login} — click to sign out`}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      color: 'var(--fg-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <LogOut size={12} />
+                    {user.login}
+                  </button>
+                ) : (
+                  <button
+                    onClick={login}
+                    title="Sign in with GitHub for private repos"
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      color: 'var(--fg-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <LogIn size={12} />
+                    Sign in
+                  </button>
+                )
+              )}
+            </>
+          )}
+
+          {/* Mobile: hamburger menu for extra actions */}
+          {isMobile && (
+            <div style={{ position: 'relative' }}>
               <button
-                onClick={logout}
-                title={`Signed in as ${user.login} — click to sign out`}
+                onClick={() => setShowMobileMenu(v => !v)}
                 style={{
-                  background: 'none',
+                  background: showMobileMenu ? 'var(--bg-overlay)' : 'none',
                   border: '1px solid var(--border)',
                   borderRadius: 6,
-                  padding: '4px 10px',
+                  padding: '4px 8px',
                   cursor: 'pointer',
                   color: 'var(--fg-muted)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 5,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  transition: 'all 0.15s',
                 }}
               >
-                <LogOut size={12} />
-                {user.login}
+                <MoreHorizontal size={15} />
               </button>
-            ) : (
-              <button
-                onClick={login}
-                title="Sign in with GitHub for private repos"
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  padding: '4px 10px',
-                  cursor: 'pointer',
-                  color: 'var(--fg-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  transition: 'all 0.15s',
-                }}
-              >
-                <LogIn size={12} />
-                Sign in
-              </button>
-            )
+              {showMobileMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 4,
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    zIndex: 100,
+                    minWidth: 160,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <button
+                    onClick={() => { setAppState({ phase: 'diff-input', url }); setShowMobileMenu(false); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg)', fontSize: 13, borderBottom: '1px solid var(--bg-overlay)' }}
+                  >
+                    <GitBranch size={13} color="var(--fg-muted)" /> Compare branches
+                  </button>
+                  <button
+                    onClick={() => { handleCopyLink(); setShowMobileMenu(false); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#10b981' : 'var(--fg)', fontSize: 13, borderBottom: '1px solid var(--bg-overlay)' }}
+                  >
+                    {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy link'}
+                  </button>
+                  {!authLoading && (
+                    user ? (
+                      <button
+                        onClick={() => { logout(); setShowMobileMenu(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg)', fontSize: 13 }}
+                      >
+                        <LogOut size={13} color="var(--fg-muted)" /> {user.login}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { login(); setShowMobileMenu(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg)', fontSize: 13 }}
+                      >
+                        <LogIn size={13} color="var(--fg-muted)" /> Sign in
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

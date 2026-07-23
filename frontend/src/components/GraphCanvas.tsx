@@ -72,7 +72,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
   const [diffFilter, setDiffFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
 
   // Mobile tab state
-  const [mobileTab, setMobileTab] = useState<'graph' | 'search' | 'filter' | 'stats'>('graph');
+  const [mobileTab, setMobileTab] = useState<'graph' | 'search' | 'filter' | 'stats' | 'diff'>('graph');
 
   // Debounce filters to avoid triggering expensive dagre layout on every keystroke/click
   const debouncedFilters = useDebounce(filters, 60);
@@ -565,8 +565,8 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
         </div>
       )}
 
-      {/* Diff filter row */}
-      {diffMode && (
+      {/* Diff filter row — desktop only; on mobile it's in the bottom sheet */}
+      {diffMode && !isMobile && (
         <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', gap: 4 }}>
           {(['all', 'added', 'removed', 'changed'] as const).map(f => (
             <button key={f} onClick={() => setDiffFilter(f)}
@@ -676,6 +676,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             activeTab={mobileTab}
             onTabChange={setMobileTab}
             hasCircularDeps={hasCircularDeps}
+            diffMode={!!diffMode}
           />
           {mobileTab === 'search' && (
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30, padding: 12, background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
@@ -704,6 +705,34 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
               <StatsPanel meta={data.meta} nodes={data.nodes} onFocusCycle={handleFocusCycle} />
             </div>
           </BottomSheet>
+          {diffMode && (
+            <BottomSheet open={mobileTab === 'diff'} onClose={() => setMobileTab('graph')} title="Diff Filter" height="auto">
+              <div style={{ padding: '8px 12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--fg-subtle)' }}>Show only files with a specific change status</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {([
+                    { f: 'all', label: 'All Files', color: '#388bfd' },
+                    { f: 'added', label: '+ Added', color: '#10b981' },
+                    { f: 'removed', label: '- Removed', color: '#ef4444' },
+                    { f: 'changed', label: '~ Changed', color: '#f59e0b' },
+                  ] as const).map(({ f, label, color }) => (
+                    <button
+                      key={f}
+                      onClick={() => { setDiffFilter(f); setMobileTab('graph'); }}
+                      style={{
+                        padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                        background: diffFilter === f ? `${color}20` : 'var(--bg-overlay)',
+                        border: `1.5px solid ${diffFilter === f ? color : 'var(--border)'}`,
+                        color: diffFilter === f ? color : 'var(--fg-muted)', cursor: 'pointer',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </BottomSheet>
+          )}
         </>
       )}
 
@@ -887,6 +916,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           onNodeClick={focusNode}
           repoMeta={{ owner: data.meta.owner, repo: data.meta.repo, branch: data.meta.branch }}
           isMobile={isMobile}
+          diffStatus={diffMode && diffData ? (diffData.nodeStatus[selectedNodeData.id] ?? 'unchanged') : undefined}
         />
       )}
 

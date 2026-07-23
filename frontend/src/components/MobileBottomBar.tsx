@@ -1,18 +1,20 @@
-import { Search, SlidersHorizontal, BarChart2 } from 'lucide-react';
+import { Search, SlidersHorizontal, BarChart2, GitCompare } from 'lucide-react';
 
-type MobileTab = 'graph' | 'search' | 'filter' | 'stats';
+type MobileTab = 'graph' | 'search' | 'filter' | 'stats' | 'diff';
 
 interface MobileBottomBarProps {
   activeTab: MobileTab;
   onTabChange: (tab: MobileTab) => void;
   hasCircularDeps?: boolean;
+  diffMode?: boolean;
 }
 
-export function MobileBottomBar({ activeTab, onTabChange, hasCircularDeps }: MobileBottomBarProps) {
+export function MobileBottomBar({ activeTab, onTabChange, hasCircularDeps, diffMode }: MobileBottomBarProps) {
   const tabs: { id: MobileTab; icon: React.ReactNode; label: string; alert?: boolean }[] = [
     { id: 'search', icon: <Search size={18} />, label: 'Search' },
     { id: 'filter', icon: <SlidersHorizontal size={18} />, label: 'Filter' },
     { id: 'stats', icon: <BarChart2 size={18} />, label: 'Stats', alert: hasCircularDeps },
+    ...(diffMode ? [{ id: 'diff' as MobileTab, icon: <GitCompare size={18} />, label: 'Diff' }] : []),
   ];
 
   return (

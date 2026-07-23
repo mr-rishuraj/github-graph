@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Github, ArrowRight, AlertCircle, Clock, GitBranch, Upload, Download } from 'lucide-react';
 import type { RecentRepo } from '../hooks/useRecentRepos.js';
 import { timeAgo } from '../hooks/useRecentRepos.js';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 
 interface UrlInputProps {
   onAnalyze: (url: string, opts: { maxFiles: number; excludeTests: boolean }) => void;
@@ -37,6 +38,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [branch, setBranch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const handleImportClick = () => fileInputRef.current?.click();
 
@@ -430,10 +432,10 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
       {/* Features */}
       <div
         style={{
-          marginTop: 64,
+          marginTop: isMobile ? 32 : 64,
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 16,
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gap: 12,
           maxWidth: 680,
           width: '100%',
         }}
