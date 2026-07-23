@@ -36,3 +36,4 @@ frontend/.playwright/
 
 # Vercel
 .vercel/
+.vercel
