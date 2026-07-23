@@ -27,7 +27,7 @@ import { KeyboardShortcutsModal } from './KeyboardShortcutsModal.js';
 import { computeDagreLayout, computeDagreLayoutAsync, graphNodesToFlowNodes, graphEdgesToFlowEdges } from '../hooks/useGraphLayout.js';
 import { buildGroupedLayoutAsync } from '../hooks/useGroupedLayout.js';
 import { useDebounce } from '../hooks/useDebounce.js';
-import { Download, Layers, FileJson } from 'lucide-react';
+import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
@@ -379,6 +379,34 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
     }
   }, [data.meta]);
 
+  // Export Mermaid
+  const handleExportMermaid = useCallback(() => {
+    const MAX_NODES = 150;
+    const visibleNodes = filteredNodes.slice(0, MAX_NODES);
+    const visibleIds = new Set(visibleNodes.map(n => n.id));
+    const visibleEdges = filteredEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const nodeLines = visibleNodes.map(n =>
+      `  ${sanitize(n.id)}["${n.label}\\n${n.type}"]`
+    );
+    const edgeLines = visibleEdges.map(e => {
+      const arrow = e.relation === 're-exports' ? '-.->': '-->';
+      return `  ${sanitize(e.source)} ${arrow} ${sanitize(e.target)}`;
+    });
+    const truncationNote = filteredNodes.length > MAX_NODES
+      ? `\n  %% Note: truncated to ${MAX_NODES} of ${filteredNodes.length} nodes`
+      : '';
+
+    const mermaid = `%%{init: {'theme': 'dark'}}%%\ngraph TD\n${nodeLines.join('\n')}\n${edgeLines.join('\n')}${truncationNote}`;
+    const blob = new Blob([mermaid], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.download = `${data.meta.owner}-${data.meta.repo}.mmd`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }, [filteredNodes, filteredEdges, data.meta]);
+
   const selectedNodeData = selectedNodeId
     ? (data.nodes.find(n => n.id === selectedNodeId) ?? null)
     : null;
@@ -638,6 +666,30 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
         >
           <FileJson size={12} />
           JSON
+        </button>
+
+        {/* Export Mermaid */}
+        <button
+          onClick={handleExportMermaid}
+          title="Export as Mermaid diagram (.mmd)"
+          style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '4px 10px',
+            fontSize: 11,
+            color: 'var(--fg-muted)',
+            cursor: 'pointer',
+            fontWeight: 600,
+            transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+          className="hover:border-[#388bfd] hover:text-[#388bfd]"
+        >
+          <Share2 size={12} />
+          Mermaid
         </button>
 
         {/* Layout direction */}

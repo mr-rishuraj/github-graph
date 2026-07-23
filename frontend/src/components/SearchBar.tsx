@@ -31,7 +31,8 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
           n =>
             n.label.toLowerCase().includes(trimmed) ||
             n.path.toLowerCase().includes(trimmed) ||
-            n.summary.toLowerCase().includes(trimmed)
+            n.summary.toLowerCase().includes(trimmed) ||
+            n.exports.some(e => e.name.toLowerCase().includes(trimmed))
         )
         .slice(0, 12);
 
@@ -137,7 +138,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
             if (query) search(query);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Search files…"
+          placeholder="Search files, exports…"
           style={{
             background: 'none',
             border: 'none',
@@ -190,6 +191,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
         >
           {results.map((node, i) => {
             const color = FILE_TYPE_COLORS[node.type] ?? '#6b7280';
+            const q = query.trim().toLowerCase();
             return (
               <button
                 key={node.id}
@@ -217,6 +219,11 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
                   <div style={{ fontSize: 11, color: 'var(--fg-subtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {node.path}
                   </div>
+                  {!node.label.toLowerCase().includes(q) && !node.path.toLowerCase().includes(q) && (
+                    <div style={{ fontSize: 10, color: '#8b5cf6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      exports: {node.exports.filter(e => e.name.toLowerCase().includes(q)).map(e => e.name).slice(0, 3).join(', ')}
+                    </div>
+                  )}
                 </span>
               </button>
             );

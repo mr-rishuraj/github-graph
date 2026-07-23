@@ -1,5 +1,16 @@
+import * as Sentry from '@sentry/node';
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? 'development',
+    tracesSampleRate: 0.1,
+  });
+}
+
 import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import axios from 'axios';
 import {
   scanRepository,
   cleanupJob,
@@ -25,6 +36,8 @@ import { logger } from './logger.js';
 import type { ParsedFile, GraphData, AnalysisDiagnostics } from './types/index.js';
 
 const app = express();
+
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
 
@@ -160,7 +173,8 @@ async function runAnalysisPipeline(
   maxFiles: number,
   excludeTests: boolean,
   excludeStyles: boolean,
-  progress: ProgressCallback
+  progress: ProgressCallback,
+  userToken?: string
 ): Promise<{ graph: GraphData; jobId: string }> {
   const repoInfo = parseGitHubUrl(url);
   const pipelineStart = Date.now();
@@ -174,7 +188,7 @@ async function runAnalysisPipeline(
 
   // 1. Download and scan repository
   progress.onDownloading?.(`${repoInfo.owner}/${repoInfo.repo}`, repoInfo.branch);
-  const scanResult = await scanRepository(url, maxFiles);
+  const scanResult = await scanRepository(url, maxFiles, userToken);
   progress.onExtracted?.(scanResult.files.length);
   mark('download');
 
@@ -307,10 +321,12 @@ async function runAnalysisPipeline(
 
 // ─── Input validation ──────────────────────────────────────────────────────────
 
+const GITHUB_URL_RE = /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(\/tree\/[^\s?#]+)?$/;
+
 function validateUrl(url: unknown): string {
   if (!url || typeof url !== 'string') throw new Error('Missing or invalid "url" parameter');
-  const trimmed = url.trim();
-  if (!trimmed.includes('github.com')) throw new Error('URL must be a GitHub repository URL');
+  const trimmed = url.trim().replace(/\.git$/, '').replace(/\/$/, '');
+  if (!GITHUB_URL_RE.test(trimmed)) throw new Error('URL must be a valid GitHub repository URL (https://github.com/owner/repo)');
   return trimmed;
 }
 
@@ -319,6 +335,56 @@ function validateMaxFiles(raw: unknown, defaultVal = 2000): number {
   if (isNaN(n) || n < 1) return defaultVal;
   return Math.min(n, config.maxFiles);
 }
+
+// ─── GitHub OAuth ─────────────────────────────────────────────────────────────
+
+app.get('/api/auth/github', (req, res) => {
+  if (!config.githubClientId) {
+    return res.status(501).json({ error: 'OAuth not configured on this server' });
+  }
+  const params = new URLSearchParams({
+    client_id: config.githubClientId,
+    scope: 'repo',
+    allow_signup: 'true',
+  });
+  res.redirect(`https://github.com/login/oauth/authorize?${params}`);
+});
+
+app.get('/api/auth/callback', async (req, res) => {
+  const code = req.query.code as string;
+  if (!code || !config.githubClientId || !config.githubClientSecret) {
+    return res.redirect(`${config.frontendUrl}/#auth_error=oauth_not_configured`);
+  }
+  try {
+    const { data } = await axios.post<{ access_token?: string; error?: string }>(
+      'https://github.com/login/oauth/access_token',
+      { client_id: config.githubClientId, client_secret: config.githubClientSecret, code },
+      { headers: { Accept: 'application/json', 'User-Agent': 'github-graph-analyzer' } }
+    );
+    if (data.error || !data.access_token) {
+      return res.redirect(`${config.frontendUrl}/#auth_error=${data.error ?? 'unknown'}`);
+    }
+    res.redirect(`${config.frontendUrl}/#access_token=${data.access_token}`);
+  } catch (err: unknown) {
+    logger.error('auth', 'OAuth callback failed', { error: errMsg(err) });
+    res.redirect(`${config.frontendUrl}/#auth_error=server_error`);
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  const authHeader = req.headers.authorization ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+  try {
+    const { data } = await axios.get<{ login: string; avatar_url: string; name: string }>(
+      'https://api.github.com/user',
+      { headers: { Authorization: `Bearer ${token}`, 'User-Agent': 'github-graph-analyzer' } }
+    );
+    res.json({ login: data.login, avatarUrl: data.avatar_url, name: data.name });
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
 
 // ─── SSE streaming endpoint ───────────────────────────────────────────────────
 
@@ -342,6 +408,7 @@ app.get('/api/analyze-stream', rateLimiter, async (req, res) => {
   const maxFiles = validateMaxFiles(req.query.maxFiles);
   const excludeTests = req.query.excludeTests === 'true';
   const excludeStyles = req.query.excludeStyles === 'true';
+  const userToken = req.query.userToken as string | undefined;
 
   let repoInfo: ReturnType<typeof parseGitHubUrl>;
   try {
@@ -374,7 +441,7 @@ app.get('/api/analyze-stream', rateLimiter, async (req, res) => {
         onExtracted: fileCount => send({ type: 'extracted', fileCount }),
         onParsing: (current, total, file) => send({ type: 'parsing', current, total, file }),
         onBuilding: () => send({ type: 'building' }),
-      }),
+      }, userToken),
       PIPELINE_TIMEOUT_MS,
       'Analysis'
     );
@@ -403,6 +470,7 @@ app.post('/api/analyze', rateLimiter, async (req, res) => {
   const maxFiles = validateMaxFiles(req.body?.maxFiles);
   const excludeTests = Boolean(req.body?.excludeTests);
   const excludeStyles = Boolean(req.body?.excludeStyles);
+  const userToken = req.body?.userToken as string | undefined;
 
   let repoInfo: ReturnType<typeof parseGitHubUrl>;
   try {
@@ -432,7 +500,7 @@ app.post('/api/analyze', rateLimiter, async (req, res) => {
         onDownloading: (repo, branch) => logger.info('analyze', `Downloading ${repo} @ ${branch}`),
         onExtracted: fileCount => logger.info('analyze', `Extracted ${fileCount} files`),
         onBuilding: () => logger.info('analyze', 'Building graph...'),
-      }),
+      }, userToken),
       PIPELINE_TIMEOUT_MS,
       'Analysis'
     );

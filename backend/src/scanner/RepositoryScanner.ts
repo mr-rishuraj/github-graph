@@ -65,9 +65,10 @@ async function downloadZip(
   branch: string,
   destDir: string,
   attempt = 1,
-  maxAttempts = 3
+  maxAttempts = 3,
+  userToken?: string
 ): Promise<void> {
-  const token = process.env.GITHUB_TOKEN;
+  const token = userToken ?? process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'github-graph-analyzer',
@@ -100,7 +101,7 @@ async function downloadZip(
         error: err instanceof Error ? err.message : String(err),
       });
       await sleep(delay);
-      return downloadZip(owner, repo, branch, destDir, attempt + 1, maxAttempts);
+      return downloadZip(owner, repo, branch, destDir, attempt + 1, maxAttempts, userToken);
     }
     throw err;
   }
@@ -110,7 +111,8 @@ async function tryDownload(
   owner: string,
   repo: string,
   info: RepoInfo,
-  destDir: string
+  destDir: string,
+  userToken?: string
 ): Promise<string> {
   const branches = info.branch !== 'main'
     ? [info.branch]
@@ -119,7 +121,7 @@ async function tryDownload(
   let lastError: unknown = null;
   for (const branch of branches) {
     try {
-      await downloadZip(owner, repo, branch, destDir);
+      await downloadZip(owner, repo, branch, destDir, 1, 3, userToken);
       return branch;
     } catch (err) {
       lastError = err;
@@ -310,7 +312,8 @@ async function readAliases(repoRoot: string): Promise<AliasMap> {
 
 export async function scanRepository(
   url: string,
-  maxFiles = 5000
+  maxFiles = 5000,
+  userToken?: string
 ): Promise<ScanResult> {
   const info = parseGitHubUrl(url);
   const { owner, repo } = info;
@@ -321,7 +324,7 @@ export async function scanRepository(
   await fs.ensureDir(extractDir);
 
   try {
-    const branch = await tryDownload(owner, repo, info, extractDir);
+    const branch = await tryDownload(owner, repo, info, extractDir, userToken);
     const repoRoot = findRepoRoot(extractDir);
     const aliases = await readAliases(repoRoot);
 
@@ -337,18 +340,32 @@ export async function scanRepository(
       ],
     });
 
-    const scannedFiles: ScannedFile[] = [];
+    // Reject if total file size would exceed 500MB (ZIP bomb protection)
+    const MAX_TOTAL_BYTES = 500 * 1024 * 1024;
+    let totalBytes = 0;
+    const checkedFiles: string[] = [];
     for (const absPath of allFiles.slice(0, maxFiles)) {
       if (shouldSkipFile(absPath)) continue;
       try {
         const stat = await fs.stat(absPath);
         if (stat.size > 1_000_000) continue;
+        totalBytes += stat.size;
+        if (totalBytes > MAX_TOTAL_BYTES) {
+          logger.warn('scanner', `Total extraction size exceeded ${MAX_TOTAL_BYTES / 1024 / 1024}MB limit, truncating`);
+          break;
+        }
+        checkedFiles.push(absPath);
+      } catch { continue; }
+    }
+
+    const scannedFiles: ScannedFile[] = [];
+    for (const absPath of checkedFiles) {
+      try {
         const content = await fs.readFile(absPath, 'utf-8');
         const relativePath = path.relative(repoRoot, absPath).replace(/\\/g, '/');
+        const stat = await fs.stat(absPath);
         scannedFiles.push({ absolutePath: absPath, relativePath, sizeBytes: stat.size, content });
-      } catch {
-        // skip unreadable files
-      }
+      } catch { continue; }
     }
 
     const workspaceCount = Object.keys(aliases).filter(k => k.includes('/')).length;

@@ -10,6 +10,8 @@ interface UrlInputProps {
   recentRepos?: RecentRepo[];
   onExportRepos?: () => void;
   onImportRepos?: (repos: RecentRepo[]) => void;
+  isLoggedIn?: boolean;
+  onLogin?: () => void;
 }
 
 const EXAMPLE_REPOS = [
@@ -19,11 +21,21 @@ const EXAMPLE_REPOS = [
   'https://github.com/tailwindlabs/tailwindcss',
 ];
 
-export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExportRepos, onImportRepos }: UrlInputProps) {
+// If branch is specified, append /tree/{branch} to the URL (unless already there)
+function buildUrl(baseUrl: string, branchOverride: string): string {
+  if (!branchOverride.trim()) return baseUrl;
+  const cleaned = baseUrl.trim().replace(/\.git$/, '').replace(/\/$/, '');
+  // Remove existing /tree/... if present
+  const withoutTree = cleaned.replace(/\/tree\/[^\s]*$/, '');
+  return `${withoutTree}/tree/${branchOverride.trim()}`;
+}
+
+export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExportRepos, onImportRepos, isLoggedIn, onLogin }: UrlInputProps) {
   const [url, setUrl] = useState('');
   const [maxFiles, setMaxFiles] = useState(2000);
   const [excludeTests, setExcludeTests] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [branch, setBranch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => fileInputRef.current?.click();
@@ -48,11 +60,13 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
     e.preventDefault();
     const trimmed = url.trim();
     if (!trimmed) return;
-    onAnalyze(trimmed, { maxFiles, excludeTests });
+    const finalUrl = buildUrl(trimmed, branch);
+    onAnalyze(finalUrl, { maxFiles, excludeTests });
   };
 
   const handleQuickAnalyze = (repoUrl: string) => {
-    onAnalyze(repoUrl, { maxFiles, excludeTests });
+    const finalUrl = buildUrl(repoUrl, branch);
+    onAnalyze(finalUrl, { maxFiles, excludeTests });
   };
 
   const isValid = url.trim().includes('github.com');
@@ -246,6 +260,28 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                 />
                 <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Skip test files</span>
               </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 12, color: 'var(--fg-muted)', fontWeight: 500 }}>
+                  Branch <span style={{ color: 'var(--fg-subtle)', fontWeight: 400 }}>(optional, defaults to main/master)</span>
+                </span>
+                <input
+                  type="text"
+                  value={branch}
+                  onChange={e => setBranch(e.target.value)}
+                  placeholder="e.g. develop, feat/my-feature"
+                  style={{
+                    background: 'var(--bg-canvas)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '6px 10px',
+                    fontSize: 13,
+                    color: 'var(--fg)',
+                    outline: 'none',
+                    fontFamily: 'monospace',
+                  }}
+                />
+              </label>
             </div>
           )}
         </div>
@@ -333,6 +369,27 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Private repo hint */}
+        {!isLoggedIn && onLogin && (
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--fg-subtle)', textAlign: 'center' }}>
+            <button
+              onClick={onLogin}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#388bfd',
+                fontSize: 12,
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              Sign in with GitHub
+            </button>
+            {' '}to analyze private repos
           </div>
         )}
 

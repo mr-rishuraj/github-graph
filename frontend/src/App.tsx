@@ -6,7 +6,8 @@ import { ProgressView } from './components/ProgressView.js';
 import { analyzeWithProgress, type ProgressEvent } from './api/client.js';
 import type { GraphData } from './types/index.js';
 import { useRecentRepos } from './hooks/useRecentRepos.js';
-import { Github, ArrowLeft, Copy, Check, Sun, Moon } from 'lucide-react';
+import { useGitHubAuth } from './hooks/useGitHubAuth.js';
+import { Github, ArrowLeft, Copy, Check, Sun, Moon, LogIn, LogOut } from 'lucide-react';
 
 type AppState =
   | { phase: 'input' }
@@ -48,6 +49,7 @@ export function App() {
     (localStorage.getItem('github-graph-theme') as 'dark' | 'light') ?? 'dark'
   );
   const { repos: recentRepos, addRepo, exportRepos, importRepos } = useRecentRepos();
+  const { token, user, loading: authLoading, login, logout } = useGitHubAuth();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -72,7 +74,7 @@ export function App() {
 
       try {
         const graph = await analyzeWithProgress(
-          { url, maxFiles: opts.maxFiles, excludeTests: opts.excludeTests },
+          { url, maxFiles: opts.maxFiles, excludeTests: opts.excludeTests, userToken: token ?? undefined },
           (event) => {
             setAppState(prev => {
               if (prev.phase !== 'progress') return prev;
@@ -134,6 +136,8 @@ export function App() {
         recentRepos={recentRepos}
         onExportRepos={exportRepos}
         onImportRepos={importRepos}
+        isLoggedIn={!!user}
+        onLogin={login}
       />
     );
   }
@@ -271,6 +275,55 @@ export function App() {
             {copied ? <Check size={12} /> : <Copy size={12} />}
             {copied ? 'Copied!' : 'Copy link'}
           </button>
+
+          {/* Auth button */}
+          {!authLoading && (
+            user ? (
+              <button
+                onClick={logout}
+                title={`Signed in as ${user.login} — click to sign out`}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  color: 'var(--fg-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <LogOut size={12} />
+                {user.login}
+              </button>
+            ) : (
+              <button
+                onClick={login}
+                title="Sign in with GitHub for private repos"
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  cursor: 'pointer',
+                  color: 'var(--fg-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <LogIn size={12} />
+                Sign in
+              </button>
+            )
+          )}
         </div>
       </div>
 

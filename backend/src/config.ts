@@ -9,4 +9,8 @@ export const config = {
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX ?? '20', 10),
   maxFiles: parseInt(process.env.MAX_FILES ?? '5000', 10),
   downloadTimeoutMs: parseInt(process.env.DOWNLOAD_TIMEOUT_MS ?? '120000', 10),
+  sentryDsn: process.env.SENTRY_DSN,
+  githubClientId: process.env.GITHUB_CLIENT_ID ?? '',
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET ?? '',
+  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:5173',
 };

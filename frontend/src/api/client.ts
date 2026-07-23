@@ -11,6 +11,7 @@ export interface AnalyzeOptions {
   maxFiles?: number;
   excludeTests?: boolean;
   excludeStyles?: boolean;
+  userToken?: string;
 }
 
 export async function analyzeRepository(opts: AnalyzeOptions): Promise<AnalysisResponse> {
@@ -59,6 +60,7 @@ export function analyzeWithProgress(
     if (opts.maxFiles !== undefined) params.set('maxFiles', String(opts.maxFiles));
     if (opts.excludeTests !== undefined) params.set('excludeTests', String(opts.excludeTests));
     if (opts.excludeStyles !== undefined) params.set('excludeStyles', String(opts.excludeStyles));
+    if (opts.userToken) params.set('userToken', opts.userToken);
 
     const es = new EventSource(`/api/analyze-stream?${params.toString()}`);
     let settled = false;
