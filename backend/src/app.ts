@@ -22,6 +22,7 @@ import { detectLanguage, isParseable } from './scanner/LanguageDetector.js';
 import { getParser } from './parser/ParserRegistry.js';
 import { buildRelationships } from './analysis/RelationshipBuilder.js';
 import { annotateSummaries } from './analysis/SummaryGenerator.js';
+import { computeDiff } from './analysis/GraphDiffer.js';
 import { buildGraph } from './graph/GraphBuilder.js';
 import {
   getLatestSha,
@@ -515,6 +516,82 @@ app.post('/api/analyze', rateLimiter, async (req, res) => {
     });
   } finally {
     if (jobId) cleanupJob(jobId).catch(e => logger.warn('cleanup', 'Failed', { error: errMsg(e) }));
+  }
+});
+
+// ─── GET /api/diff-stream ─────────────────────────────────────────────────────
+
+app.get('/api/diff-stream', rateLimiter, async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (data: object): void => { res.write(`data: ${JSON.stringify(data)}\n\n`); };
+
+  let url: string;
+  try { url = validateUrl(req.query.url); }
+  catch (err: unknown) { send({ type: 'error', message: errMsg(err) }); res.end(); return; }
+
+  const branchA = (req.query.branchA as string) || 'main';
+  const branchB = (req.query.branchB as string) || 'develop';
+  const maxFiles = validateMaxFiles(req.query.maxFiles);
+  const excludeTests = req.query.excludeTests === 'true';
+  const userToken = req.query.userToken as string | undefined;
+
+  let repoInfo: ReturnType<typeof parseGitHubUrl>;
+  try { repoInfo = parseGitHubUrl(url); }
+  catch (err: unknown) { send({ type: 'error', message: errMsg(err) }); res.end(); return; }
+
+  // suppress unused variable warning
+  void repoInfo;
+
+  const jobIds: string[] = [];
+
+  try {
+    // Analyse branchA
+    send({ type: 'start', phase: 'branchA', branch: branchA });
+    const baseUrl = url.replace(/\/tree\/[^\s]*$/, '');
+    const urlA = `${baseUrl}/tree/${branchA}`;
+    const { graph: graphA, jobId: jobIdA } = await withTimeout(
+      runAnalysisPipeline(urlA, maxFiles, excludeTests, false, {
+        onDownloading: (repo, branch) => send({ type: 'downloading', repo, branch, phase: 'branchA' }),
+        onExtracted: fc => send({ type: 'extracted', fileCount: fc, phase: 'branchA' }),
+        onParsing: (cur, tot, file) => send({ type: 'parsing', current: cur, total: tot, file, phase: 'branchA' }),
+        onBuilding: () => send({ type: 'building', phase: 'branchA' }),
+      }, userToken),
+      PIPELINE_TIMEOUT_MS,
+      'Branch A analysis'
+    );
+    jobIds.push(jobIdA);
+
+    // Analyse branchB
+    send({ type: 'start', phase: 'branchB', branch: branchB });
+    const urlB = `${baseUrl}/tree/${branchB}`;
+    const { graph: graphB, jobId: jobIdB } = await withTimeout(
+      runAnalysisPipeline(urlB, maxFiles, excludeTests, false, {
+        onDownloading: (repo, branch) => send({ type: 'downloading', repo, branch, phase: 'branchB' }),
+        onExtracted: fc => send({ type: 'extracted', fileCount: fc, phase: 'branchB' }),
+        onParsing: (cur, tot, file) => send({ type: 'parsing', current: cur, total: tot, file, phase: 'branchB' }),
+        onBuilding: () => send({ type: 'building', phase: 'branchB' }),
+      }, userToken),
+      PIPELINE_TIMEOUT_MS,
+      'Branch B analysis'
+    );
+    jobIds.push(jobIdB);
+
+    send({ type: 'diffing' });
+    const diffGraph = computeDiff(graphA, graphB);
+
+    send({ type: 'complete', graph: diffGraph });
+  } catch (err: unknown) {
+    logger.error('diff-stream', 'Diff failed', { error: errMsg(err) });
+    send({ type: 'error', message: errMsg(err) });
+  } finally {
+    res.end();
+    for (const jid of jobIds) {
+      cleanupJob(jid).catch(e => logger.warn('cleanup', 'Failed', { error: errMsg(e) }));
+    }
   }
 });
 

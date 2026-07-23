@@ -138,3 +138,24 @@ export interface RepoInfo {
   branch: string;
   defaultBranch: string;
 }
+
+export type DiffStatus = 'added' | 'removed' | 'changed' | 'unchanged';
+
+export interface DiffMeta {
+  branchA: string;
+  branchB: string;
+  added: number;
+  removed: number;
+  changed: number;
+  unchanged: number;
+}
+
+export interface DiffGraphData extends GraphData {
+  diff: {
+    nodeStatus: Record<string, DiffStatus>;  // keyed by node.id
+    edgeStatus: Record<string, DiffStatus>;  // keyed by edge.id
+    removedNodes: GraphNode[];               // nodes only in branchA
+    removedEdges: GraphEdge[];               // edges only in branchA
+    meta: DiffMeta;
+  };
+}

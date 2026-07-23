@@ -142,6 +142,27 @@ export const FILE_TYPE_LABELS: Record<FileType, string> = {
   unknown: 'Other',
 };
 
+export type DiffStatus = 'added' | 'removed' | 'changed' | 'unchanged';
+
+export interface DiffMeta {
+  branchA: string;
+  branchB: string;
+  added: number;
+  removed: number;
+  changed: number;
+  unchanged: number;
+}
+
+export interface DiffGraphData extends GraphData {
+  diff: {
+    nodeStatus: Record<string, DiffStatus>;
+    edgeStatus: Record<string, DiffStatus>;
+    removedNodes: GraphNode[];
+    removedEdges: GraphEdge[];
+    meta: DiffMeta;
+  };
+}
+
 export const LANGUAGE_LABELS: Record<Language, string> = {
   javascript: 'JS',
   typescript: 'TS',

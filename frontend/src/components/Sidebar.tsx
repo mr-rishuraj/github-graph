@@ -10,6 +10,7 @@ interface SidebarProps {
   onClose: () => void;
   onNodeClick: (id: string) => void;
   repoMeta?: { owner: string; repo: string; branch: string };
+  isMobile?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -86,7 +87,7 @@ function FileRef({ node, onClick }: { node: GraphNode; onClick: () => void }) {
 
 const SHOW_LIMIT = 30;
 
-export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMeta }: SidebarProps) {
+export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMeta, isMobile }: SidebarProps) {
   const [showAllImports, setShowAllImports] = useState(false);
   const [showAllImportedBy, setShowAllImportedBy] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
@@ -121,6 +122,17 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   })();
 
+  const mobileStyle = isMobile ? {
+    position: 'fixed' as const,
+    bottom: 0, left: 0, right: 0, top: 'auto' as const,
+    width: '100%',
+    height: '65vh',
+    borderLeft: 'none' as const,
+    borderTop: '1px solid var(--border)',
+    borderRadius: '16px 16px 0 0',
+    zIndex: 35,
+  } : {};
+
   return (
     <div
       className="animate-slide-in sidebar-mobile"
@@ -136,6 +148,7 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        ...mobileStyle,
       }}
     >
       {/* Header */}

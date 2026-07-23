@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { GraphData, GraphNode, ActiveFilters } from '../types/index.js';
+import type { GraphData, GraphNode, ActiveFilters, DiffGraphData } from '../types/index.js';
 import { FILE_TYPE_COLORS } from '../types/index.js';
 import { FileNode } from './nodes/FileNode.js';
 import { FolderNode } from './nodes/FolderNode.js';
@@ -24,15 +24,20 @@ import { FilterPanel } from './FilterPanel.js';
 import { StatsPanel } from './StatsPanel.js';
 import { NodeContextMenu } from './NodeContextMenu.js';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal.js';
+import { BottomSheet } from './BottomSheet.js';
+import { MobileBottomBar } from './MobileBottomBar.js';
 import { computeDagreLayout, computeDagreLayoutAsync, graphNodesToFlowNodes, graphEdgesToFlowEdges } from '../hooks/useGraphLayout.js';
 import { buildGroupedLayoutAsync } from '../hooks/useGroupedLayout.js';
 import { useDebounce } from '../hooks/useDebounce.js';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
 interface GraphCanvasProps {
   data: GraphData;
+  diffMode?: boolean;
+  diffData?: DiffGraphData['diff'];
 }
 
 const DEFAULT_FILTERS: ActiveFilters = {
@@ -47,8 +52,9 @@ const DEFAULT_FILTERS: ActiveFilters = {
 };
 
 
-function GraphCanvasInner({ data }: GraphCanvasProps) {
+function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
   const { fitView, setCenter, getNode } = useReactFlow();
+  const isMobile = useIsMobile();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -63,6 +69,10 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
   const [hiddenFolders, setHiddenFolders] = useState<Set<string>>(new Set());
   const [highlightPathFrom, setHighlightPathFrom] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [diffFilter, setDiffFilter] = useState<'all' | 'added' | 'removed' | 'changed'>('all');
+
+  // Mobile tab state
+  const [mobileTab, setMobileTab] = useState<'graph' | 'search' | 'filter' | 'stats'>('graph');
 
   // Debounce filters to avoid triggering expensive dagre layout on every keystroke/click
   const debouncedFilters = useDebounce(filters, 60);
@@ -81,6 +91,11 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
       if (!debouncedFilters.types.has(n.type)) return false;
       if (hiddenNodes.has(n.id)) return false;
       if (n.folder && hiddenFolders.has(n.folder)) return false;
+      // Diff filter
+      if (diffMode && diffData && diffFilter !== 'all') {
+        const status = diffData.nodeStatus[n.id] ?? 'unchanged';
+        if (status !== diffFilter) return false;
+      }
       return true;
     });
     const visibleIds = new Set(visibleNodes.map(n => n.id));
@@ -90,7 +105,7 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
       debouncedFilters.activeEdgeTypes.has(e.relation)
     );
     return { filteredNodes: visibleNodes, filteredEdges: visibleEdges };
-  }, [data, debouncedFilters, hiddenNodes, hiddenFolders]);
+  }, [data, debouncedFilters, hiddenNodes, hiddenFolders, diffMode, diffData, diffFilter]);
 
   // Clear selection when the selected node gets filtered out — keep it when still visible
   useEffect(() => {
@@ -199,6 +214,23 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
     return nodes.map(n => {
       // Don't apply dim/highlight to group nodes
       if (n.type === 'group') return n;
+
+      // Diff mode: inject diffStatus
+      if (diffMode && diffData) {
+        const status = diffData.nodeStatus[n.id] ?? 'unchanged';
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            isHighlighted: anyActive && activeIds.has(n.id),
+            isDimmed: anyActive && !activeIds.has(n.id),
+            isSelected: n.id === selectedNodeId,
+            diffStatus: status,
+          },
+          selected: n.id === selectedNodeId,
+        };
+      }
+
       return {
         ...n,
         data: {
@@ -210,7 +242,10 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
         selected: n.id === selectedNodeId,
       };
     });
-  }, [nodes, highlightedIds, selectedNodeId, filteredEdges]);
+  }, [nodes, highlightedIds, selectedNodeId, filteredEdges, diffMode, diffData]);
+
+  // Suppress unused variable warning for hasHighlight
+  void (highlightedIds.size > 0);
 
   // Edge highlighting
   const displayEdges = useMemo(() => {
@@ -420,8 +455,10 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
     });
   }, []);
 
+  const hasCircularDeps = data.meta.circularDeps.length > 0;
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', paddingBottom: isMobile ? 56 : 0 }}>
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}
@@ -492,7 +529,7 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
           }}
         >
           <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #388bfd', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-          Computing layout…
+          Computing layout...
         </div>
       )}
 
@@ -518,83 +555,170 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
             maxWidth: 480,
           }}
         >
-          <span>⚠ Large graph ({data.nodes.length.toLocaleString()} nodes) — use filters to improve performance</span>
+          <span>Warning: Large graph ({data.nodes.length.toLocaleString()} nodes) — use filters to improve performance</span>
           <button
             onClick={() => setDismissedLargeGraphWarning(true)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b', fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0 }}
           >
-            ×
+            x
           </button>
         </div>
       )}
 
-      {/* Edge legend */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 80,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-          display: 'flex',
-          gap: 14,
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          padding: '6px 14px',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
-        }}
-      >
-        {([
-          { color: 'var(--border)', dash: undefined, label: 'imports', animated: false },
-          { color: '#388bfd', dash: '4 2', label: 're-exports', animated: false },
-          { color: '#f59e0b', dash: undefined, label: 'dynamic', animated: true },
-        ] as const).map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <svg width="28" height="10">
-              <line
-                x1="2" y1="5" x2="26" y2="5"
-                stroke={item.color}
-                strokeWidth="1.5"
-                strokeDasharray={item.dash}
+      {/* Diff filter row */}
+      {diffMode && (
+        <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', gap: 4 }}>
+          {(['all', 'added', 'removed', 'changed'] as const).map(f => (
+            <button key={f} onClick={() => setDiffFilter(f)}
+              style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                background: diffFilter === f ? '#388bfd' : 'var(--bg-surface)',
+                border: `1px solid ${diffFilter === f ? '#388bfd' : 'var(--border)'}`,
+                color: diffFilter === f ? '#fff' : 'var(--fg-muted)', cursor: 'pointer' }}>
+              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Edge legend / Diff legend */}
+      {diffMode ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: isMobile ? 76 : 80,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            display: 'flex',
+            gap: 10,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '6px 14px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+          }}
+        >
+          {[
+            { color: '#10b981', label: 'Added' },
+            { color: '#ef4444', label: 'Removed' },
+            { color: '#f59e0b', label: 'Changed' },
+            { color: 'var(--fg-subtle)', label: 'Unchanged' },
+          ].map(item => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: item.color }} />
+              <span style={{ fontSize: 10, color: 'var(--fg-subtle)' }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: isMobile ? 76 : 80,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            display: 'flex',
+            gap: 14,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '6px 14px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+          }}
+        >
+          {([
+            { color: 'var(--border)', dash: undefined, label: 'imports', animated: false },
+            { color: '#388bfd', dash: '4 2', label: 're-exports', animated: false },
+            { color: '#f59e0b', dash: undefined, label: 'dynamic', animated: true },
+          ] as const).map(item => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <svg width="28" height="10">
+                <line
+                  x1="2" y1="5" x2="26" y2="5"
+                  stroke={item.color}
+                  strokeWidth="1.5"
+                  strokeDasharray={item.dash}
+                />
+                <polygon points="24,2 28,5 24,8" fill={item.color} />
+              </svg>
+              <span style={{ fontSize: 10, color: 'var(--fg-subtle)', fontWeight: 500 }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Desktop overlays — hidden on mobile */}
+      {!isMobile && (
+        <>
+          <SearchBar
+            key={data.meta.repoUrl}
+            nodes={data.nodes}
+            onHighlight={setHighlightedIds}
+            onFocusNode={focusNode}
+          />
+          <StatsPanel meta={data.meta} nodes={data.nodes} onFocusCycle={handleFocusCycle} />
+          <FilterPanel
+            filters={filters}
+            counts={typeCounts}
+            onChange={setFilters}
+            nodes={data.nodes}
+            hiddenFolders={hiddenFolders}
+            onToggleFolder={handleToggleFolder}
+          />
+        </>
+      )}
+
+      {/* Mobile overlays */}
+      {isMobile && (
+        <>
+          <MobileBottomBar
+            activeTab={mobileTab}
+            onTabChange={setMobileTab}
+            hasCircularDeps={hasCircularDeps}
+          />
+          {mobileTab === 'search' && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30, padding: 12, background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
+              <SearchBar
+                key={data.meta.repoUrl}
+                nodes={data.nodes}
+                onHighlight={setHighlightedIds}
+                onFocusNode={(id) => { focusNode(id); setMobileTab('graph'); }}
               />
-              <polygon points="24,2 28,5 24,8" fill={item.color} />
-            </svg>
-            <span style={{ fontSize: 10, color: 'var(--fg-subtle)', fontWeight: 500 }}>{item.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Overlays */}
-      <SearchBar
-        key={data.meta.repoUrl}
-        nodes={data.nodes}
-        onHighlight={setHighlightedIds}
-        onFocusNode={focusNode}
-      />
-
-      <StatsPanel meta={data.meta} nodes={data.nodes} onFocusCycle={handleFocusCycle} />
-
-      <FilterPanel
-        filters={filters}
-        counts={typeCounts}
-        onChange={setFilters}
-        nodes={data.nodes}
-        hiddenFolders={hiddenFolders}
-        onToggleFolder={handleToggleFolder}
-      />
+            </div>
+          )}
+          <BottomSheet open={mobileTab === 'filter'} onClose={() => setMobileTab('graph')} title="Filters" height="75vh">
+            <div style={{ padding: 12 }}>
+              <FilterPanel
+                filters={filters}
+                counts={typeCounts}
+                onChange={setFilters}
+                nodes={data.nodes}
+                hiddenFolders={hiddenFolders}
+                onToggleFolder={handleToggleFolder}
+              />
+            </div>
+          </BottomSheet>
+          <BottomSheet open={mobileTab === 'stats'} onClose={() => setMobileTab('graph')} title="Stats" height="80vh">
+            <div style={{ padding: 12 }}>
+              <StatsPanel meta={data.meta} nodes={data.nodes} onFocusCycle={handleFocusCycle} />
+            </div>
+          </BottomSheet>
+        </>
+      )}
 
       {/* Toolbar: Layout + Group + Export */}
       <div
         className="graph-toolbar"
         style={{
           position: 'absolute',
-          bottom: 40,
+          bottom: isMobile ? 96 : 40,
           right: 16,
           zIndex: 10,
           display: 'flex',
           gap: 4,
           alignItems: 'center',
+          flexWrap: 'wrap',
         }}
       >
         {/* Group by folder */}
@@ -709,7 +833,7 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
               transition: 'all 0.15s',
             }}
           >
-            {dir === 'TB' ? '↕ Vertical' : '↔ Horizontal'}
+            {dir === 'TB' ? 'Vertical' : 'Horizontal'}
           </button>
         ))}
 
@@ -762,6 +886,7 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
           onClose={() => setSelectedNodeId(null)}
           onNodeClick={focusNode}
           repoMeta={{ owner: data.meta.owner, repo: data.meta.repo, branch: data.meta.branch }}
+          isMobile={isMobile}
         />
       )}
 
@@ -771,7 +896,7 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
         title="Keyboard shortcuts (?)"
         style={{
           position: 'absolute',
-          bottom: 90,
+          bottom: isMobile ? 136 : 90,
           right: 16,
           zIndex: 10,
           background: 'var(--bg-surface)',
@@ -823,8 +948,8 @@ function GraphCanvasInner({ data }: GraphCanvasProps) {
   );
 }
 
-export function GraphCanvas({ data }: GraphCanvasProps) {
+export function GraphCanvas({ data, diffMode, diffData }: GraphCanvasProps) {
   return (
-    <GraphCanvasInner data={data} />
+    <GraphCanvasInner data={data} diffMode={diffMode} diffData={diffData} />
   );
 }

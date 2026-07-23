@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AnalysisResponse, GraphData } from '../types/index.js';
+import type { AnalysisResponse, GraphData, DiffGraphData } from '../types/index.js';
 
 const api = axios.create({
   baseURL: '/api',
@@ -92,5 +92,53 @@ export function analyzeWithProgress(
     es.onerror = () => {
       done(() => reject(new Error(friendlyError('SSE connection failed'))));
     };
+  });
+}
+
+export type DiffProgressEvent =
+  | { type: 'start'; phase: 'branchA' | 'branchB'; branch: string }
+  | { type: 'downloading'; repo: string; branch: string; phase: 'branchA' | 'branchB' }
+  | { type: 'extracted'; fileCount: number; phase: 'branchA' | 'branchB' }
+  | { type: 'parsing'; current: number; total: number; file: string; phase: 'branchA' | 'branchB' }
+  | { type: 'building'; phase: 'branchA' | 'branchB' }
+  | { type: 'diffing' }
+  | { type: 'complete'; graph: DiffGraphData }
+  | { type: 'error'; message: string };
+
+export interface DiffOptions {
+  url: string;
+  branchA: string;
+  branchB: string;
+  maxFiles?: number;
+  excludeTests?: boolean;
+  userToken?: string;
+}
+
+export function diffWithProgress(
+  opts: DiffOptions,
+  onProgress: (event: DiffProgressEvent) => void
+): Promise<DiffGraphData> {
+  return new Promise((resolve, reject) => {
+    const params = new URLSearchParams({
+      url: opts.url,
+      branchA: opts.branchA,
+      branchB: opts.branchB,
+    });
+    if (opts.maxFiles !== undefined) params.set('maxFiles', String(opts.maxFiles));
+    if (opts.excludeTests !== undefined) params.set('excludeTests', String(opts.excludeTests));
+    if (opts.userToken) params.set('userToken', opts.userToken);
+
+    const es = new EventSource(`/api/diff-stream?${params.toString()}`);
+    let settled = false;
+    const done = (fn: () => void) => { if (settled) return; settled = true; es.close(); fn(); };
+
+    es.onmessage = (e: MessageEvent) => {
+      let event: DiffProgressEvent;
+      try { event = JSON.parse(e.data as string) as DiffProgressEvent; } catch { return; }
+      onProgress(event);
+      if (event.type === 'complete') done(() => resolve(event.graph));
+      else if (event.type === 'error') done(() => reject(new Error(friendlyError(event.message))));
+    };
+    es.onerror = () => done(() => reject(new Error(friendlyError('SSE connection failed'))));
   });
 }

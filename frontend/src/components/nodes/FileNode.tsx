@@ -23,6 +23,7 @@ interface FileNodeData extends GraphNode {
   isHighlighted?: boolean;
   isDimmed?: boolean;
   isSelected?: boolean;
+  diffStatus?: 'added' | 'removed' | 'changed' | 'unchanged';
 }
 
 function truncate(str: string, max: number): string {
@@ -160,6 +161,26 @@ export const FileNode = memo(({ data, selected }: NodeProps) => {
     ? hotspotGlow
     : activeGlow;
 
+  // Diff styling
+  const diffColors: Record<string, string> = {
+    added: '#10b981',
+    removed: '#ef4444',
+    changed: '#f59e0b',
+    unchanged: 'transparent',
+  };
+  const diffBorderColor = node.diffStatus && node.diffStatus !== 'unchanged' ? diffColors[node.diffStatus] : null;
+  const diffBorderStyle = node.diffStatus === 'removed' ? 'dashed' : 'solid';
+  const diffOpacity = node.diffStatus === 'unchanged' ? 0.45 : 1;
+  const diffBadge = node.diffStatus === 'added' ? '+' : node.diffStatus === 'removed' ? '-' : node.diffStatus === 'changed' ? '~' : null;
+
+  const finalBorder = diffBorderColor
+    ? `2px ${diffBorderStyle} ${diffBorderColor}`
+    : `1.5px solid ${isActive ? color : isDimmed ? 'var(--bg-overlay)' : 'var(--border)'}`;
+  const finalOpacity = (isDimmed ? 0.3 : 1) * diffOpacity;
+  const finalBoxShadow = diffBorderColor
+    ? `0 0 12px ${diffBorderColor}40, ${boxShadow}`
+    : boxShadow;
+
   return (
     <div
       ref={nodeRef}
@@ -168,12 +189,12 @@ export const FileNode = memo(({ data, selected }: NodeProps) => {
         width,
         minHeight: 80,
         background: 'var(--bg-surface)',
-        border: `1.5px solid ${isActive ? color : isDimmed ? 'var(--bg-overlay)' : 'var(--border)'}`,
+        border: finalBorder,
         borderRadius: 10,
         padding: instability !== null ? '10px 12px 16px' : '10px 12px',
         cursor: 'pointer',
-        opacity: isDimmed ? 0.3 : 1,
-        boxShadow,
+        opacity: finalOpacity,
+        boxShadow: finalBoxShadow,
         transition: 'all 0.15s ease',
         position: 'relative',
         overflow: 'hidden',
@@ -193,6 +214,18 @@ export const FileNode = memo(({ data, selected }: NodeProps) => {
           borderRadius: '10px 10px 0 0',
         }}
       />
+
+      {/* Diff badge */}
+      {diffBadge && (
+        <div style={{
+          position: 'absolute', top: 6, right: 8,
+          fontSize: 11, fontWeight: 900,
+          color: diffColors[node.diffStatus!],
+          lineHeight: 1,
+        }}>
+          {diffBadge}
+        </div>
+      )}
 
       {/* Handles */}
       <Handle
