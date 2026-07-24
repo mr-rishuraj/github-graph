@@ -9,6 +9,7 @@ interface WorkerInput {
 }
 interface WorkerOutput {
   positions: Record<string, { x: number; y: number }>;
+  bounds: { maxY: number; width: number };
 }
 
 self.addEventListener('message', (e: MessageEvent<WorkerInput>) => {
@@ -24,10 +25,19 @@ self.addEventListener('message', (e: MessageEvent<WorkerInput>) => {
   dagre.layout(g);
 
   const positions: WorkerOutput['positions'] = {};
+  let maxY = 0;
+  let width = 800;
+
   for (const n of nodes) {
     const pos = g.node(n.id);
-    if (pos) positions[n.id] = { x: pos.x - n.width / 2, y: pos.y - n.height / 2 };
+    if (pos) {
+      const x = pos.x - n.width / 2;
+      const y = pos.y - n.height / 2;
+      positions[n.id] = { x, y };
+      if (y + n.height > maxY) maxY = y + n.height;
+      if (x + n.width > width) width = x + n.width;
+    }
   }
 
-  self.postMessage({ positions } satisfies WorkerOutput);
+  self.postMessage({ positions, bounds: { maxY, width } } satisfies WorkerOutput);
 });
