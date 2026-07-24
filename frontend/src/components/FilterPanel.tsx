@@ -17,7 +17,7 @@ const ALL_TYPES: FileType[] = [
 ];
 
 const EDGE_TYPE_CONFIG: { type: EdgeRelation; label: string; color: string }[] = [
-  { type: 'imports',        label: 'Imports',      color: '#388bfd' },
+  { type: 'imports',        label: 'Imports',      color: 'var(--accent)' },
   { type: 'dynamic-import', label: 'Dynamic',      color: '#f59e0b' },
   { type: 're-exports',     label: 'Re-exports',   color: '#8b5cf6' },
 ];
@@ -71,7 +71,7 @@ export function FilterPanel({ filters, counts, onChange, nodes = [], hiddenFolde
         position: 'absolute',
         left: 16,
         bottom: 40,
-        zIndex: 10,
+        zIndex: 14,
         background: 'var(--bg-surface)',
         border: '1px solid var(--border)',
         borderRadius: 10,
@@ -104,7 +104,7 @@ export function FilterPanel({ filters, counts, onChange, nodes = [], hiddenFolde
             border: 'none',
             cursor: 'pointer',
             fontSize: 10,
-            color: '#388bfd',
+            color: 'var(--accent)',
             padding: 0,
           }}
         >
@@ -280,7 +280,7 @@ export function FilterPanel({ filters, counts, onChange, nodes = [], hiddenFolde
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 10,
-                    color: '#388bfd',
+                    color: 'var(--accent)',
                     padding: '2px 0 4px',
                     textAlign: 'left',
                   }}

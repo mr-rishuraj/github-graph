@@ -32,7 +32,7 @@ export function MobileBottomBar({ activeTab, onTabChange, hasCircularDeps, diffM
           style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 3, padding: '10px 0', background: 'none', border: 'none', cursor: 'pointer',
-            color: activeTab === tab.id ? '#388bfd' : 'var(--fg-subtle)',
+            color: activeTab === tab.id ? 'var(--accent)' : 'var(--fg-subtle)',
             position: 'relative',
           }}
         >

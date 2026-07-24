@@ -68,7 +68,7 @@ function NodeTooltip({ node, anchorRef }: TooltipProps) {
         top: top,
         zIndex: 99999,
         background: 'var(--bg-surface)',
-        border: '1px solid #30363d',
+        border: '1px solid var(--border)',
         borderRadius: 10,
         padding: '12px 14px',
         width: 260,

@@ -19,7 +19,7 @@ function ShortcutRow({ keys, description }: ShortcutRowProps) {
                 fontFamily: 'monospace',
                 color: 'var(--fg)',
                 background: 'var(--bg-overlay)',
-                border: '1px solid #30363d',
+                border: '1px solid var(--border)',
                 borderBottomWidth: 2,
                 borderRadius: 4,
                 padding: '2px 6px',
@@ -148,7 +148,7 @@ export function KeyboardShortcutsModal({ onClose }: Props) {
         </Section>
 
         <div style={{ marginTop: 4, paddingTop: 12, borderTop: '1px solid #21262d', fontSize: 11, color: 'var(--fg-subtle)', textAlign: 'center' }}>
-          Press <kbd style={{ fontSize: 10, color: 'var(--fg)', background: 'var(--bg-overlay)', border: '1px solid #30363d', borderRadius: 3, padding: '1px 4px' }}>Esc</kbd> or <kbd style={{ fontSize: 10, color: 'var(--fg)', background: 'var(--bg-overlay)', border: '1px solid #30363d', borderRadius: 3, padding: '1px 4px' }}>?</kbd> to close
+          Press <kbd style={{ fontSize: 10, color: 'var(--fg)', background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 4px' }}>Esc</kbd> or <kbd style={{ fontSize: 10, color: 'var(--fg)', background: 'var(--bg-overlay)', border: '1px solid var(--border)', borderRadius: 3, padding: '1px 4px' }}>?</kbd> to close
         </div>
       </div>
     </div>

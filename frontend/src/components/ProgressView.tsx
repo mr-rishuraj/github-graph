@@ -140,14 +140,14 @@ export function ProgressView({ currentEvent, repoUrl }: ProgressViewProps) {
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      background: done ? '#388bfd' : active ? 'var(--bg-surface)' : 'var(--bg-surface)',
-                      border: `2px solid ${done ? '#388bfd' : active ? '#388bfd' : 'var(--border)'}`,
+                      background: done ? 'var(--accent)' : active ? 'var(--bg-surface)' : 'var(--bg-surface)',
+                      border: `2px solid ${done ? 'var(--accent)' : active ? 'var(--accent)' : 'var(--border)'}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       transition: 'all 0.3s',
                       flexShrink: 0,
-                      boxShadow: active ? '0 0 0 3px #388bfd25' : 'none',
+                      boxShadow: active ? '0 0 0 3px var(--accent-muted)' : 'none',
                     }}
                   >
                     {done ? (
@@ -160,12 +160,12 @@ export function ProgressView({ currentEvent, repoUrl }: ProgressViewProps) {
                           width: 8,
                           height: 8,
                           borderRadius: '50%',
-                          background: '#388bfd',
+                          background: 'var(--accent)',
                           animation: 'pulse-dot 1.2s ease-in-out infinite',
                         }}
                       />
                     ) : (
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: future ? 'var(--border)' : '#388bfd' }} />
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: future ? 'var(--border)' : 'var(--accent)' }} />
                     )}
                   </div>
                   <span
@@ -185,7 +185,7 @@ export function ProgressView({ currentEvent, repoUrl }: ProgressViewProps) {
                     style={{
                       flex: 1,
                       height: 2,
-                      background: done ? '#388bfd' : 'var(--bg-overlay)',
+                      background: done ? 'var(--accent)' : 'var(--bg-overlay)',
                       marginBottom: 18,
                       marginLeft: 2,
                       marginRight: 2,
@@ -215,10 +215,10 @@ export function ProgressView({ currentEvent, repoUrl }: ProgressViewProps) {
               width: `${percent}%`,
               background: isError
                 ? '#ef4444'
-                : 'linear-gradient(90deg, #1f6feb 0%, #388bfd 50%, #58a6ff 100%)',
+                : 'linear-gradient(90deg, #1f6feb 0%, var(--accent) 50%, #58a6ff 100%)',
               borderRadius: 99,
               transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: isError ? 'none' : '0 0 12px #388bfd60',
+              boxShadow: isError ? 'none' : '0 0 12px var(--accent-subtle)',
             }}
           />
         </div>

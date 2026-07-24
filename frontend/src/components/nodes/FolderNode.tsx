@@ -10,7 +10,7 @@ interface FolderNodeData {
 
 export const FolderNode = memo(({ data }: NodeProps) => {
   const d = data as unknown as FolderNodeData;
-  const color = d.color ?? '#388bfd';
+  const color = d.color ?? 'var(--accent)';
 
   return (
     <div

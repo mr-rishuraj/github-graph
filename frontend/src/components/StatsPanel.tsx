@@ -124,7 +124,7 @@ export function StatsPanel({ meta, nodes = [], onFocusCycle }: StatsPanelProps) 
         position: 'absolute',
         left: 16,
         top: 16,
-        zIndex: 10,
+        zIndex: 14,
         width: 248,
         background: 'var(--bg-surface)',
         border: '1px solid var(--border)',
@@ -275,7 +275,7 @@ export function StatsPanel({ meta, nodes = [], onFocusCycle }: StatsPanelProps) 
                     <button
                       onClick={() => setShowAllCycles(v => !v)}
                       style={{
-                        fontSize: 10, color: '#388bfd', background: 'none', border: 'none',
+                        fontSize: 10, color: 'var(--accent)', background: 'none', border: 'none',
                         cursor: 'pointer', padding: '2px 0', textAlign: 'left',
                       }}
                     >

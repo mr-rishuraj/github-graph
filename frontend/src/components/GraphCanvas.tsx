@@ -264,14 +264,14 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
     if (!selectedNodeId) return edges;
 
     const REL_COLORS: Record<string, string> = {
-      'imports': '#388bfd',
+      'imports': 'var(--accent)',
       'dynamic-import': '#f59e0b',
       're-exports': '#8b5cf6',
     };
 
     return edges.map(e => {
       const connected = e.source === selectedNodeId || e.target === selectedNodeId;
-      const relColor = REL_COLORS[(e.data as Record<string, unknown>)?.relation as string ?? 'imports'] ?? '#388bfd';
+      const relColor = REL_COLORS[(e.data as Record<string, unknown>)?.relation as string ?? 'imports'] ?? 'var(--accent)';
       return {
         ...e,
         style: {
@@ -513,7 +513,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           }}
           maskColor={isLightTheme ? 'rgba(238,242,247,0.75)' : 'rgba(0,0,0,0.6)'}
           nodeColor={n => {
-            if (n.type === 'group') return '#388bfd20';
+            if (n.type === 'group') return 'var(--accent-muted)';
             return FILE_TYPE_COLORS[(n.data as unknown as GraphNode).type] ?? '#4b5563';
           }}
         />
@@ -540,7 +540,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #388bfd', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid var(--accent)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
           Computing layout...
         </div>
       )}
@@ -583,9 +583,9 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           {(['all', 'added', 'removed', 'changed'] as const).map(f => (
             <button key={f} onClick={() => setDiffFilter(f)}
               style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                background: diffFilter === f ? '#388bfd' : 'var(--bg-surface)',
-                border: `1px solid ${diffFilter === f ? '#388bfd' : 'var(--border)'}`,
-                color: diffFilter === f ? '#fff' : 'var(--fg-muted)', cursor: 'pointer' }}>
+                background: diffFilter === f ? 'var(--accent)' : 'var(--bg-surface)',
+                border: `1px solid ${diffFilter === f ? 'var(--accent)' : 'var(--border)'}`,
+                color: diffFilter === f ? 'var(--accent-fg)' : 'var(--fg-muted)', cursor: 'pointer' }}>
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
@@ -641,7 +641,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
         >
           {([
             { color: 'var(--border)', dash: undefined, label: 'imports', animated: false },
-            { color: '#388bfd', dash: '4 2', label: 're-exports', animated: false },
+            { color: 'var(--accent)', dash: '4 2', label: 're-exports', animated: false },
             { color: '#f59e0b', dash: undefined, label: 'dynamic', animated: true },
           ] as const).map(item => (
             <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -723,7 +723,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--fg-subtle)' }}>Show only files with a specific change status</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {([
-                    { f: 'all', label: 'All Files', color: '#388bfd' },
+                    { f: 'all', label: 'All Files', color: 'var(--accent)' },
                     { f: 'added', label: '+ Added', color: '#10b981' },
                     { f: 'removed', label: '- Removed', color: '#ef4444' },
                     { f: 'changed', label: '~ Changed', color: '#f59e0b' },
@@ -754,8 +754,8 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
         style={{
           position: 'absolute',
           bottom: isMobile ? 96 : 40,
-          right: 16,
-          zIndex: 10,
+          right: selectedNodeData && !isMobile ? 320 + 16 : 16,
+          zIndex: 15,
           display: 'flex',
           gap: 4,
           alignItems: 'center',
@@ -768,11 +768,11 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           title="Group by folder"
           style={{
             background: groupByFolder ? 'var(--bg-surface)' : 'var(--bg-surface)',
-            border: `1px solid ${groupByFolder ? '#388bfd' : 'var(--border)'}`,
+            border: `1px solid ${groupByFolder ? 'var(--accent)' : 'var(--border)'}`,
             borderRadius: 6,
             padding: '4px 10px',
             fontSize: 11,
-            color: groupByFolder ? '#388bfd' : 'var(--fg-muted)',
+            color: groupByFolder ? 'var(--accent)' : 'var(--fg-muted)',
             cursor: 'pointer',
             fontWeight: 600,
             transition: 'all 0.15s',
@@ -803,7 +803,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             alignItems: 'center',
             gap: 5,
           }}
-          className="hover:border-[#388bfd] hover:text-[#388bfd]"
+          className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <Download size={12} />
           PNG
@@ -827,7 +827,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             alignItems: 'center',
             gap: 5,
           }}
-          className="hover:border-[#388bfd] hover:text-[#388bfd]"
+          className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <FileJson size={12} />
           JSON
@@ -851,7 +851,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             alignItems: 'center',
             gap: 5,
           }}
-          className="hover:border-[#388bfd] hover:text-[#388bfd]"
+          className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <Share2 size={12} />
           Mermaid
@@ -863,12 +863,12 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             key={dir}
             onClick={() => setLayoutDir(dir)}
             style={{
-              background: layoutDir === dir ? '#388bfd' : 'var(--bg-surface)',
-              border: `1px solid ${layoutDir === dir ? '#388bfd' : 'var(--border)'}`,
+              background: layoutDir === dir ? 'var(--accent)' : 'var(--bg-surface)',
+              border: `1px solid ${layoutDir === dir ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius: 6,
               padding: '4px 10px',
               fontSize: 11,
-              color: layoutDir === dir ? '#fff' : 'var(--fg-muted)',
+              color: layoutDir === dir ? 'var(--accent-fg)' : 'var(--fg-muted)',
               cursor: 'pointer',
               fontWeight: 600,
               transition: 'all 0.15s',
@@ -939,8 +939,8 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
         style={{
           position: 'absolute',
           bottom: isMobile ? 136 : 90,
-          right: 16,
-          zIndex: 10,
+          right: selectedNodeData && !isMobile ? 320 + 16 : 16,
+          zIndex: 15,
           background: 'var(--bg-surface)',
           border: '1px solid var(--border)',
           borderRadius: 6,
@@ -955,7 +955,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           fontWeight: 700,
           transition: 'all 0.15s',
         }}
-        className="hover:border-[#388bfd] hover:text-[#388bfd]"
+        className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         ?
       </button>
@@ -974,12 +974,12 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 20,
-            background: '#388bfd18',
-            border: '1px solid #388bfd40',
+            background: 'var(--accent-muted)',
+            border: '1px solid var(--accent-subtle)',
             borderRadius: 8,
             padding: '8px 16px',
             fontSize: 12,
-            color: '#388bfd',
+            color: 'var(--accent)',
             fontWeight: 600,
           }}
         >

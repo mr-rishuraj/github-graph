@@ -66,7 +66,7 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
               <input value={branchA} onChange={e => setBranchA(e.target.value)} placeholder="main" style={inputStyle} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#388bfd', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Compare branch (B)
               </span>
               <input value={branchB} onChange={e => setBranchB(e.target.value)} placeholder="develop" style={inputStyle} />
@@ -74,7 +74,7 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--fg-subtle)', margin: 0 }}>
-            Shows what changed from <strong style={{ color: '#10b981' }}>{branchA || 'A'}</strong> to <strong style={{ color: '#388bfd' }}>{branchB || 'B'}</strong> — added, removed, and changed files.
+            Shows what changed from <strong style={{ color: '#10b981' }}>{branchA || 'A'}</strong> to <strong style={{ color: 'var(--accent)' }}>{branchB || 'B'}</strong> — added, removed, and changed files.
           </p>
 
           {/* Options */}
@@ -82,10 +82,10 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Max files: {maxFiles.toLocaleString()}</span>
               <input type="range" min={100} max={5000} step={100} value={maxFiles}
-                onChange={e => setMaxFiles(Number(e.target.value))} style={{ accentColor: '#388bfd' }} />
+                onChange={e => setMaxFiles(Number(e.target.value))} style={{ accentColor: 'var(--accent)' }} />
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <input type="checkbox" checked={excludeTests} onChange={e => setExcludeTests(e.target.checked)} style={{ accentColor: '#388bfd' }} />
+              <input type="checkbox" checked={excludeTests} onChange={e => setExcludeTests(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
               <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Skip test files</span>
             </label>
           </div>
@@ -104,9 +104,9 @@ export function DiffInput({ url, onDiff, onCancel }: DiffInputProps) {
               disabled={!branchA.trim() || !branchB.trim()}
               style={{
                 flex: 2, padding: '10px 0',
-                background: branchA && branchB ? '#388bfd' : 'var(--bg-overlay)',
+                background: branchA && branchB ? 'var(--accent)' : 'var(--bg-overlay)',
                 border: 'none', borderRadius: 8, cursor: branchA && branchB ? 'pointer' : 'not-allowed',
-                color: branchA && branchB ? '#fff' : 'var(--fg-subtle)',
+                color: branchA && branchB ? 'var(--accent-fg)' : 'var(--fg-subtle)',
                 fontSize: 14, fontWeight: 700,
               }}
             >

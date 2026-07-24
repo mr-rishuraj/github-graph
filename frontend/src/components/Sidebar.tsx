@@ -145,7 +145,7 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
         width: 320,
         background: 'var(--bg-canvas)',
         borderLeft: '1px solid var(--border)',
-        zIndex: 10,
+        zIndex: 12,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -206,7 +206,7 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
                   display: 'flex',
                   textDecoration: 'none',
                 }}
-                className="hover:bg-[var(--bg-overlay)] hover:text-[#388bfd] transition-colors"
+                className="hover:bg-[var(--bg-overlay)] hover:text-[var(--accent)] transition-colors"
               >
                 <ExternalLink size={15} />
               </a>
@@ -372,7 +372,7 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
               {importsFiles.length > SHOW_LIMIT && (
                 <button
                   onClick={() => setShowAllImports(v => !v)}
-                  style={{ fontSize: 11, color: '#388bfd', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', textAlign: 'left' }}
+                  style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', textAlign: 'left' }}
                 >
                   {showAllImports ? 'Show less' : `+ ${importsFiles.length - SHOW_LIMIT} more`}
                 </button>
@@ -404,7 +404,7 @@ export function Sidebar({ node, allNodes, allEdges, onClose, onNodeClick, repoMe
               {importedBy.length > SHOW_LIMIT && (
                 <button
                   onClick={() => setShowAllImportedBy(v => !v)}
-                  style={{ fontSize: 11, color: '#388bfd', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', textAlign: 'left' }}
+                  style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', textAlign: 'left' }}
                 >
                   {showAllImportedBy ? 'Show less' : `+ ${importedBy.length - SHOW_LIMIT} more`}
                 </button>

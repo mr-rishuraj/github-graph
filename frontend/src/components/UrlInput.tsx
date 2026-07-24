@@ -92,13 +92,13 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
             width: 56,
             height: 56,
             background: 'var(--bg-surface)',
-            border: '1px solid #30363d',
+            border: '1px solid var(--border)',
             borderRadius: 16,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 20px',
-            boxShadow: '0 0 0 1px #388bfd20, 0 8px 32px rgba(0,0,0,0.4)',
+            boxShadow: '0 0 0 1px var(--accent-muted), 0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
           <Github size={28} color="var(--fg)" />
@@ -132,10 +132,10 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
               display: 'flex',
               gap: 0,
               background: 'var(--bg-surface)',
-              border: `1px solid ${error ? '#ef4444' : isValid ? '#388bfd' : 'var(--border)'}`,
+              border: `1px solid ${error ? '#ef4444' : isValid ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius: 12,
               overflow: 'hidden',
-              boxShadow: `0 4px 24px rgba(0,0,0,0.4)${isValid ? ', 0 0 0 3px #388bfd18' : ''}`,
+              boxShadow: `0 4px 24px rgba(0,0,0,0.4)${isValid ? ', 0 0 0 3px var(--accent-muted)' : ''}`,
               transition: 'all 0.2s',
             }}
           >
@@ -163,12 +163,12 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
               type="submit"
               disabled={isLoading || !isValid}
               style={{
-                background: isValid && !isLoading ? '#388bfd' : 'var(--bg-overlay)',
+                background: isValid && !isLoading ? 'var(--accent)' : 'var(--bg-overlay)',
                 border: 'none',
-                borderLeft: '1px solid #30363d',
+                borderLeft: '1px solid var(--border)',
                 padding: '0 20px',
                 cursor: isValid && !isLoading ? 'pointer' : 'not-allowed',
-                color: isValid && !isLoading ? '#fff' : 'var(--fg-subtle)',
+                color: isValid && !isLoading ? 'var(--accent-fg)' : 'var(--fg-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
@@ -230,7 +230,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
               style={{
                 marginTop: 8,
                 background: 'var(--bg-surface)',
-                border: '1px solid #30363d',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '12px 14px',
                 display: 'flex',
@@ -249,7 +249,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                   step={100}
                   value={maxFiles}
                   onChange={e => setMaxFiles(Number(e.target.value))}
-                  style={{ accentColor: '#388bfd' }}
+                  style={{ accentColor: 'var(--accent)' }}
                 />
               </label>
 
@@ -258,7 +258,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                   type="checkbox"
                   checked={excludeTests}
                   onChange={e => setExcludeTests(e.target.checked)}
-                  style={{ accentColor: '#388bfd' }}
+                  style={{ accentColor: 'var(--accent)' }}
                 />
                 <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>Skip test files</span>
               </label>
@@ -309,7 +309,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                     onClick={onExportRepos}
                     title="Export recent repos"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-subtle)', display: 'flex', padding: 2 }}
-                    className="hover:text-[#388bfd] transition-colors"
+                    className="hover:text-[var(--accent)] transition-colors"
                   >
                     <Download size={11} />
                   </button>
@@ -319,7 +319,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                     onClick={handleImportClick}
                     title="Import recent repos"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg-subtle)', display: 'flex', padding: 2 }}
-                    className="hover:text-[#388bfd] transition-colors"
+                    className="hover:text-[var(--accent)] transition-colors"
                   >
                     <Upload size={11} />
                   </button>
@@ -383,7 +383,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#388bfd',
+                color: 'var(--accent)',
                 fontSize: 12,
                 padding: 0,
                 textDecoration: 'underline',
@@ -410,7 +410,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                   disabled={isLoading}
                   style={{
                     background: 'var(--bg-surface)',
-                    border: '1px solid #30363d',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '5px 10px',
                     fontSize: 12,
@@ -419,7 +419,7 @@ export function UrlInput({ onAnalyze, isLoading, error, recentRepos = [], onExpo
                     fontFamily: 'monospace',
                     transition: 'all 0.15s',
                   }}
-                  className="hover:border-[#388bfd] hover:text-[#388bfd] transition-colors"
+                  className="hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
                 >
                   {name}
                 </button>

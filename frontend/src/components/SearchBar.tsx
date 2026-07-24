@@ -118,7 +118,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
           alignItems: 'center',
           gap: 8,
           background: 'var(--bg-surface)',
-          border: `1px solid ${open ? '#388bfd' : 'var(--border)'}`,
+          border: `1px solid ${open ? 'var(--accent)' : 'var(--border)'}`,
           borderRadius: open && results.length > 0 ? '8px 8px 0 0' : 8,
           padding: '8px 12px',
           boxShadow: 'var(--shadow-md)',
@@ -166,7 +166,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
               fontSize: 10,
               color: 'var(--fg-subtle)',
               background: 'var(--bg-overlay)',
-              border: '1px solid #30363d',
+              border: '1px solid var(--border)',
               borderRadius: 4,
               padding: '2px 5px',
               whiteSpace: 'nowrap' as const,
@@ -182,7 +182,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
         <div
           style={{
             background: 'var(--bg-surface)',
-            border: '1px solid #388bfd',
+            border: '1px solid var(--accent)',
             borderTop: 'none',
             borderRadius: '0 0 8px 8px',
             overflow: 'hidden',
@@ -235,7 +235,7 @@ export function SearchBar({ nodes, onHighlight, onFocusNode }: SearchBarProps) {
         <div
           style={{
             background: 'var(--bg-surface)',
-            border: '1px solid #30363d',
+            border: '1px solid var(--border)',
             borderTop: 'none',
             borderRadius: '0 0 8px 8px',
             padding: '12px 14px',

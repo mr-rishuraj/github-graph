@@ -104,9 +104,9 @@ export function graphNodesToFlowNodes(graphNodes: GraphNode[]): Node[] {
 }
 
 const EDGE_STYLE: Record<string, { stroke: string; dash?: string }> = {
-  'imports':        { stroke: '#30363d' },
+  'imports':        { stroke: 'var(--border)' },
   'dynamic-import': { stroke: '#f59e0b' },
-  're-exports':     { stroke: '#388bfd', dash: '4 2' },
+  're-exports':     { stroke: 'var(--accent)', dash: '4 2' },
 };
 
 export function graphEdgesToFlowEdges(graphEdges: Array<{ id: string; source: string; target: string; relation: string; specifiers: string[] }>): Edge[] {

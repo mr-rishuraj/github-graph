@@ -70,8 +70,8 @@ export function DiffProgressView({ currentEvent, branchA, branchB }: DiffProgres
             }}>{branchA}</span>
             <span style={{ color: 'var(--fg-subtle)', fontSize: 16 }}>{'→'}</span>
             <span style={{
-              fontSize: 14, fontWeight: 700, color: '#388bfd',
-              background: '#388bfd18', border: '1px solid #388bfd40',
+              fontSize: 14, fontWeight: 700, color: 'var(--accent)',
+              background: 'var(--accent-muted)', border: '1px solid var(--accent-subtle)',
               borderRadius: 6, padding: '3px 10px', fontFamily: 'monospace',
             }}>{branchB}</span>
           </div>
@@ -81,7 +81,7 @@ export function DiffProgressView({ currentEvent, branchA, branchB }: DiffProgres
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {[
             { label: branchA, done: phaseADone, active: currentPhase === 'branchA', color: '#10b981' },
-            { label: branchB, done: phaseBDone, active: currentPhase === 'branchB', color: '#388bfd' },
+            { label: branchB, done: phaseBDone, active: currentPhase === 'branchB', color: 'var(--accent)' },
             { label: 'Diff', done: phaseBDone, active: currentPhase === 'done', color: '#f59e0b' },
           ].map(step => (
             <div key={step.label} style={{
@@ -101,7 +101,7 @@ export function DiffProgressView({ currentEvent, branchA, branchB }: DiffProgres
         <div style={{ height: 6, background: 'var(--bg-overlay)', borderRadius: 99, overflow: 'hidden', marginBottom: 14 }}>
           <div style={{
             height: '100%', width: `${percent}%`,
-            background: 'linear-gradient(90deg, #10b981, #388bfd)',
+            background: 'linear-gradient(90deg, #10b981, var(--accent))',
             borderRadius: 99, transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
           }} />
         </div>

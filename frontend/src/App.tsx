@@ -264,7 +264,7 @@ export function App() {
           <button
             onClick={handleBack}
             style={topBarButtonStyle}
-            className="hover:border-[#388bfd] hover:text-[#388bfd]"
+            className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             <ArrowLeft size={13} />
             {isMobile ? '' : 'Graph'}
@@ -274,7 +274,7 @@ export function App() {
             {!isMobile && <Github size={15} color="var(--fg-muted)" style={{ flexShrink: 0 }} />}
             <span style={{ fontSize: isMobile ? 11 : 13, color: '#10b981', fontFamily: 'monospace', fontWeight: 600, flexShrink: 0 }}>{branchA}</span>
             <span style={{ color: 'var(--fg-subtle)', flexShrink: 0 }}>→</span>
-            <span style={{ fontSize: isMobile ? 11 : 13, color: '#388bfd', fontFamily: 'monospace', fontWeight: 600, flexShrink: 0 }}>{branchB}</span>
+            <span style={{ fontSize: isMobile ? 11 : 13, color: 'var(--accent)', fontFamily: 'monospace', fontWeight: 600, flexShrink: 0 }}>{branchB}</span>
           </div>
 
           {/* Diff summary badges — hide on mobile to save space */}
@@ -318,7 +318,7 @@ export function App() {
                 fontSize: 12,
                 transition: 'all 0.15s',
               }}
-              className="hover:border-[#388bfd] hover:text-[#388bfd]"
+              className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
             </button>
@@ -365,7 +365,7 @@ export function App() {
         <button
           onClick={handleBack}
           style={topBarButtonStyle}
-          className="hover:border-[#388bfd] hover:text-[#388bfd]"
+          className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <ArrowLeft size={13} />
           Back
@@ -388,7 +388,7 @@ export function App() {
           <button
             onClick={() => setAppState({ phase: 'diff-input', url })}
             style={topBarButtonStyle}
-            className="hover:border-[#388bfd] hover:text-[#388bfd]"
+            className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
             title="Compare two branches"
           >
             <GitBranch size={13} />
@@ -437,7 +437,7 @@ export function App() {
               fontSize: 12,
               transition: 'all 0.15s',
             }}
-            className="hover:border-[#388bfd] hover:text-[#388bfd]"
+            className="hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           </button>
