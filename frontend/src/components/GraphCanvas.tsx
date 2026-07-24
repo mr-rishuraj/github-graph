@@ -34,56 +34,58 @@ import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
 /**
- * Score every node and return the one most likely to be the project entry point.
+ * Structural score used to break ties between multiple files with the same name.
+ * Higher = more likely to be the true root (imports many, imported by few, shallow).
+ */
+function structuralScore(n: GraphNode): number {
+  const efferent = n.efferentCoupling ?? n.importCount ?? 0;
+  const afferent = n.afferentCoupling ?? 0;
+  const depth    = n.depth ?? 99;
+  return efferent * 2 - afferent * 2 - depth * 1.5 - (n.isBarrel ? 8 : 0);
+}
+
+/**
+ * Find the most likely entry-point node.
  *
- * A true entry point typically:
- *   - imports many files (high efferent coupling / importCount)
- *   - is imported by few or none (low afferent coupling)
- *   - sits near the root of the dep tree (low depth)
- *   - is NOT a barrel re-exporter
- *
- * Filename hints are used as tie-breakers, not as the primary signal,
- * so `src/index.ts` barrel files don't win over `App.tsx` or `main.tsx`.
+ * Strategy:
+ *  1. Try each name pattern in priority order (main > App > index > …).
+ *     If multiple files match the same pattern (e.g. nested index.ts files),
+ *     pick the one with the best structural score.
+ *  2. If no name matches at all, fall back to pure structural scoring.
  */
 function findEntryNode(nodes: GraphNode[]): GraphNode | null {
   if (nodes.length === 0) return null;
 
-  // Ignore test, asset, style and config files — they're never entry points
+  // Never consider test / asset / style / config files
   const candidates = nodes.filter(
     n => !['test', 'asset', 'style', 'config'].includes(n.type)
   );
   if (candidates.length === 0) return null;
 
-  // Name hint bonus (small — structural signals dominate)
-  const nameBonus = (n: GraphNode): number => {
-    const p = n.path;
-    if (/^(src\/)?main\.(tsx?|jsx?)$/i.test(p))          return 12;
-    if (/^(src\/)?App\.(tsx?|jsx?)$/i.test(p))            return 10;
-    if (/^(src\/)?app\/layout\.(tsx?|jsx?)$/i.test(p))    return 10;
-    if (/^(src\/)?app\/page\.(tsx?|jsx?)$/i.test(p))      return 9;
-    if (/^(src\/)?pages\/_app\.(tsx?|jsx?)$/i.test(p))    return 10;
-    if (/^(src\/)?pages\/index\.(tsx?|jsx?)$/i.test(p))   return 8;
-    if (/^(src\/)?index\.(tsx?|jsx?)$/i.test(p))          return 4;  // barrel-prone: low bonus
-    if (/^(src\/)?__main__\.py$/i.test(p))                return 12;
-    if (/^(src\/)?main\.py$/i.test(p))                    return 10;
-    return 0;
-  };
+  // Priority-ordered name patterns — first match wins
+  const NAME_PRIORITY: RegExp[] = [
+    /^(src\/)?main\.(tsx?|jsx?)$/i,            // Vite / CRA / React Native
+    /^(src\/)?App\.(tsx?|jsx?)$/i,             // React root component
+    /^(src\/)?app\.(tsx?|jsx?)$/i,
+    /^(src\/)?app\/layout\.(tsx?|jsx?)$/i,     // Next.js App Router root layout
+    /^(src\/)?app\/page\.(tsx?|jsx?)$/i,       // Next.js App Router root page
+    /^(src\/)?pages\/_app\.(tsx?|jsx?)$/i,     // Next.js Pages Router
+    /^(src\/)?pages\/index\.(tsx?|jsx?)$/i,
+    /^(src\/)?index\.(tsx?|jsx?)$/i,           // generic (barrel-prone, so checked late)
+    /^index\.(tsx?|jsx?)$/i,
+    /^(src\/)?__main__\.py$/i,                 // Python
+    /^(src\/)?main\.py$/i,
+  ];
 
-  const score = (n: GraphNode): number => {
-    const efferent = n.efferentCoupling ?? n.importCount ?? 0;
-    const afferent = n.afferentCoupling ?? 0;
-    const depth    = n.depth ?? 99;
+  for (const pattern of NAME_PRIORITY) {
+    const hits = candidates.filter(n => pattern.test(n.path));
+    if (hits.length === 0) continue;
+    // Among hits, pick the one with the best structural score
+    return hits.reduce((best, n) => structuralScore(n) > structuralScore(best) ? n : best, hits[0]);
+  }
 
-    return (
-      efferent * 2.5          // reward importing many files (fan-out = root behaviour)
-      - afferent * 3          // penalise being heavily imported (barrel behaviour)
-      - depth * 1.5           // penalise deep nodes (entry is at or near the root)
-      + nameBonus(n)          // small filename hint
-      - (n.isBarrel ? 12 : 0) // strong penalty for barrel re-exporters
-    );
-  };
-
-  return candidates.reduce((best, n) => (score(n) > score(best) ? n : best), candidates[0]);
+  // No name matched — fall back to structural scoring across all candidates
+  return candidates.reduce((best, n) => structuralScore(n) > structuralScore(best) ? n : best, candidates[0]);
 }
 
 interface GraphCanvasProps {
