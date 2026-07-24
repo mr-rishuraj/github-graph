@@ -33,6 +33,40 @@ import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
+/** Priority-ordered patterns for detecting the project entry point. */
+const ENTRY_PATTERNS: RegExp[] = [
+  // React / Vite / CRA entry
+  /^(src\/)?main\.(tsx?|jsx?)$/i,
+  /^(src\/)?index\.(tsx?|jsx?)$/i,
+  // Next.js App Router
+  /^(src\/)?app\/page\.(tsx?|jsx?)$/i,
+  /^(src\/)?app\/layout\.(tsx?|jsx?)$/i,
+  // Next.js Pages Router
+  /^(src\/)?pages\/_app\.(tsx?|jsx?)$/i,
+  /^(src\/)?pages\/index\.(tsx?|jsx?)$/i,
+  // Root App component
+  /^(src\/)?App\.(tsx?|jsx?)$/i,
+  /^(src\/)?app\.(tsx?|jsx?)$/i,
+  // Python / generic
+  /^(src\/)?__main__\.py$/i,
+  /^(src\/)?main\.py$/i,
+];
+
+function findEntryNode(nodes: GraphNode[]): GraphNode | null {
+  for (const pattern of ENTRY_PATTERNS) {
+    const found = nodes.find(n => pattern.test(n.path));
+    if (found) return found;
+  }
+  // Fallback: most imported file (highest afferent coupling)
+  const byImports = [...nodes].sort(
+    (a, b) => (b.afferentCoupling ?? 0) - (a.afferentCoupling ?? 0)
+  );
+  if (byImports.length > 0 && (byImports[0].afferentCoupling ?? 0) > 1) {
+    return byImports[0];
+  }
+  return null;
+}
+
 interface GraphCanvasProps {
   data: GraphData;
   diffMode?: boolean;
@@ -72,6 +106,14 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
 
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<'graph' | 'search' | 'filter' | 'stats' | 'diff'>('graph');
+
+  // Auto-focus: tracks whether we've already zoomed to the entry node for this graph
+  const [hasAutoFocused, setHasAutoFocused] = useState(false);
+
+  // Reset auto-focus whenever a new repo/graph is loaded
+  useEffect(() => {
+    setHasAutoFocused(false);
+  }, [data.meta.repoUrl]);
 
   // Debounce filters to avoid triggering expensive dagre layout on every keystroke/click
   const debouncedFilters = useDebounce(filters, 60);
@@ -170,10 +212,36 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
     return () => { cancelled = true; };
   }, [filteredNodes, filteredEdges, layoutDir, groupByFolder, hiddenFolders, setNodes, setEdges]);
 
-  // Fit view once layout is ready
+  // Fit view once layout is ready; first load auto-focuses the entry point
   const handleInit = useCallback(() => {
-    setTimeout(() => fitView({ padding: 0.1, duration: 400 }), 100);
+    setTimeout(() => fitView({ padding: 0.1, duration: 300 }), 80);
   }, [fitView]);
+
+  // After the first layout settles, zoom to the entry node
+  useEffect(() => {
+    if (hasAutoFocused || isLayoutComputing || nodes.length === 0) return;
+    // Wait until at least some nodes have non-zero positions (layout done)
+    if (nodes.every(n => n.position.x === 0 && n.position.y === 0)) return;
+
+    setHasAutoFocused(true);
+
+    const entry = findEntryNode(data.nodes);
+    if (!entry) return;
+
+    // Brief pause to let ReactFlow render the positioned nodes, then zoom in
+    setTimeout(() => {
+      const flowNode = getNode(entry.id);
+      if (!flowNode) return;
+      const w = flowNode.measured?.width ?? 220;
+      const h = flowNode.measured?.height ?? 90;
+      setCenter(
+        flowNode.position.x + w / 2,
+        flowNode.position.y + h / 2,
+        { duration: 700, zoom: 1.3 }
+      );
+      setSelectedNodeId(entry.id);
+    }, 450); // after fitView animation (300ms) + buffer
+  }, [nodes, isLayoutComputing, hasAutoFocused, data.nodes, getNode, setCenter]);
 
   // "Show only connected" — hide all nodes not connected to target
   const handleShowOnlyConnected = useCallback((id: string) => {
