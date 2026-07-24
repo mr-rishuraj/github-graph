@@ -13,7 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { GraphData, GraphNode, ActiveFilters, DiffGraphData } from '../types/index.js';
+import type { GraphData, GraphNode, GraphEdge, ActiveFilters, DiffGraphData } from '../types/index.js';
 import { FILE_TYPE_COLORS } from '../types/index.js';
 import { FileNode } from './nodes/FileNode.js';
 import { FolderNode } from './nodes/FolderNode.js';
@@ -34,58 +34,51 @@ import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
 /**
- * Structural score used to break ties between multiple files with the same name.
- * Higher = more likely to be the true root (imports many, imported by few, shallow).
- */
-function structuralScore(n: GraphNode): number {
-  const efferent = n.efferentCoupling ?? n.importCount ?? 0;
-  const afferent = n.afferentCoupling ?? 0;
-  const depth    = n.depth ?? 99;
-  return efferent * 2 - afferent * 2 - depth * 1.5 - (n.isBarrel ? 8 : 0);
-}
-
-/**
- * Find the most likely entry-point node.
+ * Find the root of the dependency tree — the node that nothing imports
+ * but which imports the most other files (the "parent of the family tree").
  *
- * Strategy:
- *  1. Try each name pattern in priority order (main > App > index > …).
- *     If multiple files match the same pattern (e.g. nested index.ts files),
- *     pick the one with the best structural score.
- *  2. If no name matches at all, fall back to pure structural scoring.
+ * Steps:
+ *  1. Count actual incoming/outgoing edges per node from the real edge list.
+ *  2. Collect "true roots": nodes with 0 incoming edges and ≥1 outgoing edge.
+ *  3. Among true roots, pick the one with the most outgoing edges.
+ *  4. If no true root exists (circular-only graph), fall back to the node
+ *     with the fewest incoming edges, breaking ties by most outgoing.
  */
-function findEntryNode(nodes: GraphNode[]): GraphNode | null {
+function findEntryNode(nodes: GraphNode[], edges: GraphEdge[]): GraphNode | null {
   if (nodes.length === 0) return null;
 
-  // Never consider test / asset / style / config files
+  // Ignore test / asset / style / config — they're never entry points
   const candidates = nodes.filter(
     n => !['test', 'asset', 'style', 'config'].includes(n.type)
   );
   if (candidates.length === 0) return null;
 
-  // Priority-ordered name patterns — first match wins
-  const NAME_PRIORITY: RegExp[] = [
-    /^(src\/)?main\.(tsx?|jsx?)$/i,            // Vite / CRA / React Native
-    /^(src\/)?App\.(tsx?|jsx?)$/i,             // React root component
-    /^(src\/)?app\.(tsx?|jsx?)$/i,
-    /^(src\/)?app\/layout\.(tsx?|jsx?)$/i,     // Next.js App Router root layout
-    /^(src\/)?app\/page\.(tsx?|jsx?)$/i,       // Next.js App Router root page
-    /^(src\/)?pages\/_app\.(tsx?|jsx?)$/i,     // Next.js Pages Router
-    /^(src\/)?pages\/index\.(tsx?|jsx?)$/i,
-    /^(src\/)?index\.(tsx?|jsx?)$/i,           // generic (barrel-prone, so checked late)
-    /^index\.(tsx?|jsx?)$/i,
-    /^(src\/)?__main__\.py$/i,                 // Python
-    /^(src\/)?main\.py$/i,
-  ];
+  const candidateIds = new Set(candidates.map(n => n.id));
 
-  for (const pattern of NAME_PRIORITY) {
-    const hits = candidates.filter(n => pattern.test(n.path));
-    if (hits.length === 0) continue;
-    // Among hits, pick the one with the best structural score
-    return hits.reduce((best, n) => structuralScore(n) > structuralScore(best) ? n : best, hits[0]);
+  // Build incoming / outgoing edge counts from the real edge data
+  const incoming = new Map<string, number>();
+  const outgoing = new Map<string, number>();
+  for (const e of edges) {
+    if (candidateIds.has(e.target)) incoming.set(e.target, (incoming.get(e.target) ?? 0) + 1);
+    if (candidateIds.has(e.source)) outgoing.set(e.source, (outgoing.get(e.source) ?? 0) + 1);
   }
 
-  // No name matched — fall back to structural scoring across all candidates
-  return candidates.reduce((best, n) => structuralScore(n) > structuralScore(best) ? n : best, candidates[0]);
+  // True roots: nothing imports them, but they import something
+  const roots = candidates.filter(
+    n => (incoming.get(n.id) ?? 0) === 0 && (outgoing.get(n.id) ?? 0) > 0
+  );
+
+  const pool = roots.length > 0 ? roots : candidates;
+
+  return pool.reduce((best, n) => {
+    const inN = incoming.get(n.id) ?? 0;
+    const inB = incoming.get(best.id) ?? 0;
+    const outN = outgoing.get(n.id) ?? 0;
+    const outB = outgoing.get(best.id) ?? 0;
+    // Primary: fewest incoming; secondary: most outgoing
+    if (inN !== inB) return inN < inB ? n : best;
+    return outN > outB ? n : best;
+  }, pool[0]);
 }
 
 interface GraphCanvasProps {
@@ -246,7 +239,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
 
     setHasAutoFocused(true);
 
-    const entry = findEntryNode(data.nodes);
+    const entry = findEntryNode(data.nodes, data.edges);
     if (!entry) return;
 
     // Brief pause to let ReactFlow render the positioned nodes, then zoom in
