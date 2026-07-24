@@ -3,7 +3,6 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
@@ -53,7 +52,7 @@ const DEFAULT_FILTERS: ActiveFilters = {
 
 
 function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
-  const { fitView, setCenter, getNode } = useReactFlow();
+  const { fitView, setCenter, getNode, zoomIn, zoomOut } = useReactFlow();
   const isMobile = useIsMobile();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
@@ -497,14 +496,7 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           size={1}
           color="var(--bg-overlay)"
         />
-        <Controls
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        />
+        {/* Hide default controls — replaced by custom zoom strip */}
         <MiniMap
           style={{
             background: 'var(--bg-canvas)',
@@ -747,6 +739,61 @@ function GraphCanvasInner({ data, diffMode, diffData }: GraphCanvasProps) {
           )}
         </>
       )}
+
+      {/* Zoom controls — top right, always visible */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: selectedNodeData && !isMobile ? 320 + 16 : 16,
+          zIndex: 15,
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          overflow: 'hidden',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        {([
+          { label: '+', title: 'Zoom in',  onClick: () => zoomIn({ duration: 200 }) },
+          { label: '⊙', title: 'Fit view', onClick: () => fitView({ padding: 0.1, duration: 400 }) },
+          { label: '−', title: 'Zoom out', onClick: () => zoomOut({ duration: 200 }) },
+        ] as const).map(({ label, title, onClick }) => (
+          <button
+            key={label}
+            onClick={onClick}
+            title={title}
+            style={{
+              width: 32,
+              height: 32,
+              background: 'none',
+              border: 'none',
+              borderBottom: label === '−' ? 'none' : '1px solid var(--border)',
+              cursor: 'pointer',
+              color: 'var(--fg-muted)',
+              fontSize: label === '⊙' ? 14 : 18,
+              fontWeight: 400,
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.1s, color 0.1s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-overlay)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'none';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-muted)';
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Toolbar: Layout + Group + Export */}
       <div
