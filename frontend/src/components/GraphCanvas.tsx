@@ -33,38 +33,57 @@ import { Download, Layers, FileJson, Share2 } from 'lucide-react';
 
 const NODE_TYPES: NodeTypes = { fileNode: FileNode, group: FolderNode };
 
-/** Priority-ordered patterns for detecting the project entry point. */
-const ENTRY_PATTERNS: RegExp[] = [
-  // React / Vite / CRA entry
-  /^(src\/)?main\.(tsx?|jsx?)$/i,
-  /^(src\/)?index\.(tsx?|jsx?)$/i,
-  // Next.js App Router
-  /^(src\/)?app\/page\.(tsx?|jsx?)$/i,
-  /^(src\/)?app\/layout\.(tsx?|jsx?)$/i,
-  // Next.js Pages Router
-  /^(src\/)?pages\/_app\.(tsx?|jsx?)$/i,
-  /^(src\/)?pages\/index\.(tsx?|jsx?)$/i,
-  // Root App component
-  /^(src\/)?App\.(tsx?|jsx?)$/i,
-  /^(src\/)?app\.(tsx?|jsx?)$/i,
-  // Python / generic
-  /^(src\/)?__main__\.py$/i,
-  /^(src\/)?main\.py$/i,
-];
-
+/**
+ * Score every node and return the one most likely to be the project entry point.
+ *
+ * A true entry point typically:
+ *   - imports many files (high efferent coupling / importCount)
+ *   - is imported by few or none (low afferent coupling)
+ *   - sits near the root of the dep tree (low depth)
+ *   - is NOT a barrel re-exporter
+ *
+ * Filename hints are used as tie-breakers, not as the primary signal,
+ * so `src/index.ts` barrel files don't win over `App.tsx` or `main.tsx`.
+ */
 function findEntryNode(nodes: GraphNode[]): GraphNode | null {
-  for (const pattern of ENTRY_PATTERNS) {
-    const found = nodes.find(n => pattern.test(n.path));
-    if (found) return found;
-  }
-  // Fallback: most imported file (highest afferent coupling)
-  const byImports = [...nodes].sort(
-    (a, b) => (b.afferentCoupling ?? 0) - (a.afferentCoupling ?? 0)
+  if (nodes.length === 0) return null;
+
+  // Ignore test, asset, style and config files — they're never entry points
+  const candidates = nodes.filter(
+    n => !['test', 'asset', 'style', 'config'].includes(n.type)
   );
-  if (byImports.length > 0 && (byImports[0].afferentCoupling ?? 0) > 1) {
-    return byImports[0];
-  }
-  return null;
+  if (candidates.length === 0) return null;
+
+  // Name hint bonus (small — structural signals dominate)
+  const nameBonus = (n: GraphNode): number => {
+    const p = n.path;
+    if (/^(src\/)?main\.(tsx?|jsx?)$/i.test(p))          return 12;
+    if (/^(src\/)?App\.(tsx?|jsx?)$/i.test(p))            return 10;
+    if (/^(src\/)?app\/layout\.(tsx?|jsx?)$/i.test(p))    return 10;
+    if (/^(src\/)?app\/page\.(tsx?|jsx?)$/i.test(p))      return 9;
+    if (/^(src\/)?pages\/_app\.(tsx?|jsx?)$/i.test(p))    return 10;
+    if (/^(src\/)?pages\/index\.(tsx?|jsx?)$/i.test(p))   return 8;
+    if (/^(src\/)?index\.(tsx?|jsx?)$/i.test(p))          return 4;  // barrel-prone: low bonus
+    if (/^(src\/)?__main__\.py$/i.test(p))                return 12;
+    if (/^(src\/)?main\.py$/i.test(p))                    return 10;
+    return 0;
+  };
+
+  const score = (n: GraphNode): number => {
+    const efferent = n.efferentCoupling ?? n.importCount ?? 0;
+    const afferent = n.afferentCoupling ?? 0;
+    const depth    = n.depth ?? 99;
+
+    return (
+      efferent * 2.5          // reward importing many files (fan-out = root behaviour)
+      - afferent * 3          // penalise being heavily imported (barrel behaviour)
+      - depth * 1.5           // penalise deep nodes (entry is at or near the root)
+      + nameBonus(n)          // small filename hint
+      - (n.isBarrel ? 12 : 0) // strong penalty for barrel re-exporters
+    );
+  };
+
+  return candidates.reduce((best, n) => (score(n) > score(best) ? n : best), candidates[0]);
 }
 
 interface GraphCanvasProps {
